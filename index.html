@@ -45,10 +45,6 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <!-- Admin Access Button (only visible with admin parameter) -->
-                    <button id="admin-access-btn" onclick="toggleAdmin()" class="hidden bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all text-sm">
-                        ⚙️ <span class="hidden sm:inline">Admin</span>
-                    </button>
                     <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
                         🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
                     </button>
@@ -111,7 +107,12 @@
         <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Painel Administrativo</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Painel Administrativo</h2>
+                    <button onclick="backToStore()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                        🏪 Voltar para Loja
+                    </button>
+                </div>
                 
                 <!-- Database Status -->
                 <div class="mb-6 p-4 bg-blue-50 rounded-lg">
@@ -625,25 +626,24 @@
             const adminParam = urlParams.get('admin');
             
             if (adminParam === 'kc2024' || adminParam === 'kelly' || adminParam === 'admin') {
-                // Show admin button
-                const adminBtn = document.getElementById('admin-access-btn');
-                if (adminBtn) {
-                    adminBtn.classList.remove('hidden');
-                }
-                
                 // Store admin access in session
                 sessionStorage.setItem('kc_admin_access', 'true');
                 
-                console.log('🔑 Acesso administrativo concedido!');
-                return true;
-            }
-            
-            // Check if admin access was previously granted in this session
-            if (sessionStorage.getItem('kc_admin_access') === 'true') {
-                const adminBtn = document.getElementById('admin-access-btn');
-                if (adminBtn) {
-                    adminBtn.classList.remove('hidden');
-                }
+                // Automatically switch to admin view
+                setTimeout(() => {
+                    const customerView = document.getElementById('customer-view');
+                    const adminPanel = document.getElementById('admin-panel');
+                    
+                    if (customerView && adminPanel) {
+                        customerView.style.display = 'none';
+                        adminPanel.style.display = 'block';
+                        updateStockList();
+                        updateSalesReport();
+                        updateProductGallery();
+                    }
+                }, 100);
+                
+                console.log('🔑 Acesso administrativo concedido! Painel admin ativado automaticamente.');
                 return true;
             }
             
@@ -1572,29 +1572,20 @@
         }
 
         // Admin Functions
-        function toggleAdmin() {
-            // Check if user has admin access
-            if (sessionStorage.getItem('kc_admin_access') !== 'true') {
-                alert('🔒 Acesso negado! Use o link administrativo para acessar esta área.');
-                return;
-            }
-            
+        function backToStore() {
             const customerView = document.getElementById('customer-view');
             const adminPanel = document.getElementById('admin-panel');
-            const adminBtn = document.getElementById('admin-access-btn');
             
-            if (adminPanel.style.display === 'none' || !adminPanel.style.display) {
-                customerView.style.display = 'none';
-                adminPanel.style.display = 'block';
-                adminBtn.innerHTML = '👁️ <span class="hidden sm:inline">Loja</span>';
-                updateStockList();
-                updateSalesReport();
-                updateProductGallery();
-            } else {
-                customerView.style.display = 'block';
-                adminPanel.style.display = 'none';
-                adminBtn.innerHTML = '⚙️ <span class="hidden sm:inline">Admin</span>';
-            }
+            customerView.style.display = 'block';
+            adminPanel.style.display = 'none';
+            
+            // Remove admin parameter from URL without reloading page
+            const url = new URL(window.location);
+            url.searchParams.delete('admin');
+            window.history.replaceState({}, document.title, url.pathname + url.search);
+            
+            // Clear admin session
+            sessionStorage.removeItem('kc_admin_access');
         }
 
         document.getElementById('add-product-form').addEventListener('submit', async function(e) {
@@ -1838,5 +1829,5 @@
             // Status display update logic (keeping existing implementation)
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d13fe094da02df',t:'MTc1NDg0NzMyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d149e002e68a4f',t:'MTc1NDg0NzczMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
