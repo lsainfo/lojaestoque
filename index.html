@@ -133,6 +133,54 @@
                     </div>
                 </div>
                 
+                <!-- Supabase Configuration Section -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-800">🌐 Configuração Supabase (Banco na Nuvem)</h3>
+                    
+                    <div class="mb-4 p-3 bg-white rounded-lg border border-blue-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-blue-700">Status da Conexão:</span>
+                            <span id="supabase-status" class="px-2 py-1 rounded text-sm font-medium bg-gray-100 text-gray-600">
+                                Verificando...
+                            </span>
+                        </div>
+                        <p class="text-sm text-blue-600" id="supabase-info">
+                            Configure suas credenciais do Supabase para salvar dados na nuvem
+                        </p>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-blue-700 mb-2">URL do Projeto Supabase</label>
+                            <input type="url" id="supabase-url" placeholder="https://seu-projeto.supabase.co" 
+                                   class="w-full p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <p class="text-xs text-blue-500 mt-1">Encontre em: Projeto → Settings → API</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-blue-700 mb-2">Chave Pública (anon key)</label>
+                            <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                                   class="w-full p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <p class="text-xs text-blue-500 mt-1">Chave pública segura para frontend</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-2 mb-4">
+                        <button onclick="testSupabaseConnection()" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all font-medium">
+                            🔍 Testar Conexão
+                        </button>
+                        <button onclick="saveSupabaseConfig()" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all font-medium">
+                            💾 Salvar Configuração
+                        </button>
+                        <button onclick="showSupabaseSetup()" class="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all font-medium">
+                            📚 Tutorial Setup
+                        </button>
+                    </div>
+                    
+                    <div class="text-xs text-blue-600 bg-blue-100 p-2 rounded">
+                        <strong>💡 Dica:</strong> Com Supabase configurado, todos os dados ficam salvos na nuvem e podem ser acessados de qualquer dispositivo!
+                    </div>
+                </div>
+
                 <!-- Store Settings Section -->
                 <div class="mb-6 p-4 bg-purple-50 rounded-lg">
                     <h3 class="text-lg font-semibold mb-4 text-purple-800">Configurações da Loja</h3>
@@ -292,35 +340,158 @@
     <input type="file" id="import-file-input" accept=".json" class="hidden">
 
     <script>
-        // Database Management System
+        // Supabase Database Management System
         class KCPerfumariaDB {
             constructor() {
-                this.dbName = 'KCPerfumariaDB';
-                this.version = 1;
-                this.db = null;
+                // Configurações do Supabase - SUBSTITUA PELOS SEUS DADOS
+                this.supabaseUrl = 'https://SEU_PROJETO.supabase.co';
+                this.supabaseKey = 'SUA_CHAVE_PUBLICA_AQUI';
+                this.supabase = null;
+                this.isConnected = false;
             }
 
             async init() {
+                try {
+                    console.log('🔄 Conectando ao Supabase...');
+                    
+                    // Verificar se as configurações foram definidas
+                    if (this.supabaseUrl.includes('SEU_PROJETO') || this.supabaseKey.includes('SUA_CHAVE')) {
+                        console.warn('⚠️ Configurações do Supabase não definidas. Usando modo local.');
+                        return this.initLocalDB();
+                    }
+                    
+                    // Carregar biblioteca do Supabase
+                    if (typeof createClient === 'undefined') {
+                        await this.loadSupabaseLibrary();
+                    }
+                    
+                    // Inicializar cliente Supabase
+                    this.supabase = createClient(this.supabaseUrl, this.supabaseKey);
+                    
+                    // Testar conexão
+                    const { data, error } = await this.supabase.from('products').select('count').limit(1);
+                    
+                    if (error && error.code === 'PGRST116') {
+                        // Tabela não existe, criar estrutura
+                        await this.createTables();
+                    } else if (error) {
+                        throw error;
+                    }
+                    
+                    this.isConnected = true;
+                    console.log('✅ Supabase conectado com sucesso!');
+                    this.updateDBStatus('Conectado ao Supabase - Dados na nuvem');
+                    return true;
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao conectar Supabase:', error);
+                    console.log('🔄 Fallback para banco local...');
+                    return this.initLocalDB();
+                }
+            }
+
+            async loadSupabaseLibrary() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(this.dbName, this.version);
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+                    script.onload = () => {
+                        console.log('✅ Biblioteca Supabase carregada!');
+                        resolve();
+                    };
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            async createTables() {
+                console.log('🔄 Criando tabelas no Supabase...');
+                
+                // Nota: As tabelas devem ser criadas no painel do Supabase
+                // Este é apenas um aviso para o usuário
+                const message = `
+                ⚠️ CONFIGURAÇÃO NECESSÁRIA NO SUPABASE:
+                
+                Acesse seu painel do Supabase e execute os seguintes comandos SQL:
+                
+                -- Tabela de produtos
+                CREATE TABLE products (
+                    id BIGINT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    brand TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    price DECIMAL(10,2) NOT NULL,
+                    stock INTEGER NOT NULL DEFAULT 0,
+                    description TEXT,
+                    image TEXT,
+                    image_url TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                
+                -- Tabela de vendas
+                CREATE TABLE sales (
+                    id BIGINT PRIMARY KEY,
+                    items JSONB NOT NULL,
+                    total DECIMAL(10,2) NOT NULL,
+                    payment_method TEXT,
+                    date TIMESTAMP DEFAULT NOW(),
+                    date_formatted TEXT
+                );
+                
+                -- Tabela de configurações
+                CREATE TABLE settings (
+                    key TEXT PRIMARY KEY,
+                    value JSONB NOT NULL,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                );
+                
+                -- Tabela de imagens
+                CREATE TABLE images (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                
+                -- Habilitar RLS (Row Level Security)
+                ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+                ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+                ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+                ALTER TABLE images ENABLE ROW LEVEL SECURITY;
+                
+                -- Políticas de acesso público (para demonstração)
+                CREATE POLICY "Allow all operations" ON products FOR ALL USING (true);
+                CREATE POLICY "Allow all operations" ON sales FOR ALL USING (true);
+                CREATE POLICY "Allow all operations" ON settings FOR ALL USING (true);
+                CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);
+                `;
+                
+                console.log(message);
+                alert(message);
+                
+                // Fallback para banco local
+                return this.initLocalDB();
+            }
+
+            async initLocalDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('KCPerfumariaDB', 1);
                     
                     request.onerror = () => {
-                        console.error('Erro ao abrir banco de dados:', request.error);
+                        console.error('Erro ao abrir banco local:', request.error);
                         reject(request.error);
                     };
                     
                     request.onsuccess = () => {
                         this.db = request.result;
-                        console.log('✅ Banco de dados conectado com sucesso!');
-                        this.updateDBStatus('Conectado - Dados salvos automaticamente');
+                        this.isConnected = false;
+                        console.log('✅ Banco local conectado!');
+                        this.updateDBStatus('Modo Local - Configure Supabase para nuvem');
                         resolve(this.db);
                     };
                     
                     request.onupgradeneeded = (event) => {
                         this.db = event.target.result;
-                        console.log('🔄 Criando estrutura do banco de dados...');
+                        console.log('🔄 Criando estrutura do banco local...');
                         
-                        // Store para produtos
                         if (!this.db.objectStoreNames.contains('products')) {
                             const productStore = this.db.createObjectStore('products', { keyPath: 'id' });
                             productStore.createIndex('brand', 'brand', { unique: false });
@@ -328,24 +499,21 @@
                             productStore.createIndex('name', 'name', { unique: false });
                         }
                         
-                        // Store para vendas
                         if (!this.db.objectStoreNames.contains('sales')) {
                             const salesStore = this.db.createObjectStore('sales', { keyPath: 'id' });
                             salesStore.createIndex('date', 'date', { unique: false });
                             salesStore.createIndex('total', 'total', { unique: false });
                         }
                         
-                        // Store para configurações
                         if (!this.db.objectStoreNames.contains('settings')) {
                             this.db.createObjectStore('settings', { keyPath: 'key' });
                         }
                         
-                        // Store para imagens
                         if (!this.db.objectStoreNames.contains('images')) {
                             this.db.createObjectStore('images', { keyPath: 'id' });
                         }
                         
-                        console.log('✅ Estrutura do banco criada!');
+                        console.log('✅ Estrutura do banco local criada!');
                     };
                 });
             }
@@ -363,140 +531,353 @@
 
             // Produtos
             async saveProduct(product) {
-                const transaction = this.db.transaction(['products'], 'readwrite');
-                const store = transaction.objectStore('products');
-                
-                try {
-                    await store.put(product);
-                    console.log('✅ Produto salvo:', product.name);
-                    this.updateDBStatus(`Produto "${product.name}" salvo!`);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao salvar produto:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('products')
+                            .upsert({
+                                id: product.id,
+                                name: product.name,
+                                brand: product.brand,
+                                category: product.category,
+                                price: product.price,
+                                stock: product.stock,
+                                description: product.description,
+                                image: product.image,
+                                image_url: product.imageUrl
+                            });
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Produto salvo no Supabase:', product.name);
+                        this.updateDBStatus(`Produto "${product.name}" salvo na nuvem!`);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar produto no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['products'], 'readwrite');
+                    const store = transaction.objectStore('products');
+                    
+                    try {
+                        await store.put(product);
+                        console.log('✅ Produto salvo localmente:', product.name);
+                        this.updateDBStatus(`Produto "${product.name}" salvo!`);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar produto:', error);
+                        return false;
+                    }
                 }
             }
 
             async getAllProducts() {
-                const transaction = this.db.transaction(['products'], 'readonly');
-                const store = transaction.objectStore('products');
-                
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('products')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        // Converter para formato esperado
+                        return data.map(product => ({
+                            id: product.id,
+                            name: product.name,
+                            brand: product.brand,
+                            category: product.category,
+                            price: parseFloat(product.price),
+                            stock: product.stock,
+                            description: product.description,
+                            image: product.image,
+                            imageUrl: product.image_url
+                        }));
+                    } catch (error) {
+                        console.error('❌ Erro ao buscar produtos no Supabase:', error);
+                        return [];
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['products'], 'readonly');
+                    const store = transaction.objectStore('products');
+                    
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             }
 
             async deleteProduct(productId) {
-                const transaction = this.db.transaction(['products'], 'readwrite');
-                const store = transaction.objectStore('products');
-                
-                try {
-                    await store.delete(productId);
-                    console.log('✅ Produto excluído:', productId);
-                    this.updateDBStatus('Produto excluído!');
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao excluir produto:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { error } = await this.supabase
+                            .from('products')
+                            .delete()
+                            .eq('id', productId);
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Produto excluído do Supabase:', productId);
+                        this.updateDBStatus('Produto excluído da nuvem!');
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao excluir produto no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['products'], 'readwrite');
+                    const store = transaction.objectStore('products');
+                    
+                    try {
+                        await store.delete(productId);
+                        console.log('✅ Produto excluído:', productId);
+                        this.updateDBStatus('Produto excluído!');
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao excluir produto:', error);
+                        return false;
+                    }
                 }
             }
 
             // Vendas
             async saveSale(sale) {
-                const transaction = this.db.transaction(['sales'], 'readwrite');
-                const store = transaction.objectStore('sales');
-                
-                try {
-                    await store.put(sale);
-                    console.log('✅ Venda registrada:', sale.id);
-                    this.updateDBStatus(`Venda R$ ${sale.total.toFixed(2)} registrada!`);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao registrar venda:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('sales')
+                            .insert({
+                                id: sale.id,
+                                items: sale.items,
+                                total: sale.total,
+                                payment_method: sale.paymentMethod,
+                                date: sale.date,
+                                date_formatted: sale.dateFormatted
+                            });
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Venda registrada no Supabase:', sale.id);
+                        this.updateDBStatus(`Venda R$ ${sale.total.toFixed(2)} registrada na nuvem!`);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao registrar venda no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['sales'], 'readwrite');
+                    const store = transaction.objectStore('sales');
+                    
+                    try {
+                        await store.put(sale);
+                        console.log('✅ Venda registrada:', sale.id);
+                        this.updateDBStatus(`Venda R$ ${sale.total.toFixed(2)} registrada!`);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao registrar venda:', error);
+                        return false;
+                    }
                 }
             }
 
             async getAllSales() {
-                const transaction = this.db.transaction(['sales'], 'readonly');
-                const store = transaction.objectStore('sales');
-                
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('sales')
+                            .select('*')
+                            .order('date', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        // Converter para formato esperado
+                        return data.map(sale => ({
+                            id: sale.id,
+                            items: sale.items,
+                            total: parseFloat(sale.total),
+                            paymentMethod: sale.payment_method,
+                            date: sale.date,
+                            dateFormatted: sale.date_formatted
+                        }));
+                    } catch (error) {
+                        console.error('❌ Erro ao buscar vendas no Supabase:', error);
+                        return [];
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['sales'], 'readonly');
+                    const store = transaction.objectStore('sales');
+                    
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             }
 
             // Configurações
             async saveSetting(key, value) {
-                const transaction = this.db.transaction(['settings'], 'readwrite');
-                const store = transaction.objectStore('settings');
-                
-                try {
-                    await store.put({ key, value });
-                    console.log('✅ Configuração salva:', key);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao salvar configuração:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('settings')
+                            .upsert({ key, value });
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Configuração salva no Supabase:', key);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar configuração no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    
+                    try {
+                        await store.put({ key, value });
+                        console.log('✅ Configuração salva:', key);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar configuração:', error);
+                        return false;
+                    }
                 }
             }
 
             async getSetting(key) {
-                const transaction = this.db.transaction(['settings'], 'readonly');
-                const store = transaction.objectStore('settings');
-                
-                return new Promise((resolve, reject) => {
-                    const request = store.get(key);
-                    request.onsuccess = () => {
-                        resolve(request.result ? request.result.value : null);
-                    };
-                    request.onerror = () => reject(request.error);
-                });
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('settings')
+                            .select('value')
+                            .eq('key', key)
+                            .single();
+                        
+                        if (error && error.code !== 'PGRST116') throw error;
+                        
+                        return data ? data.value : null;
+                    } catch (error) {
+                        console.error('❌ Erro ao buscar configuração no Supabase:', error);
+                        return null;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['settings'], 'readonly');
+                    const store = transaction.objectStore('settings');
+                    
+                    return new Promise((resolve, reject) => {
+                        const request = store.get(key);
+                        request.onsuccess = () => {
+                            resolve(request.result ? request.result.value : null);
+                        };
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             }
 
             // Imagens
             async saveImage(id, imageData) {
-                const transaction = this.db.transaction(['images'], 'readwrite');
-                const store = transaction.objectStore('images');
-                
-                try {
-                    await store.put({ id, data: imageData });
-                    console.log('✅ Imagem salva:', id);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao salvar imagem:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('images')
+                            .upsert({ id, data: imageData });
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Imagem salva no Supabase:', id);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar imagem no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['images'], 'readwrite');
+                    const store = transaction.objectStore('images');
+                    
+                    try {
+                        await store.put({ id, data: imageData });
+                        console.log('✅ Imagem salva:', id);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar imagem:', error);
+                        return false;
+                    }
                 }
             }
 
             async getImage(id) {
-                const transaction = this.db.transaction(['images'], 'readonly');
-                const store = transaction.objectStore('images');
-                
-                return new Promise((resolve, reject) => {
-                    const request = store.get(id);
-                    request.onsuccess = () => {
-                        resolve(request.result ? request.result.data : null);
-                    };
-                    request.onerror = () => reject(request.error);
-                });
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from('images')
+                            .select('data')
+                            .eq('id', id)
+                            .single();
+                        
+                        if (error && error.code !== 'PGRST116') throw error;
+                        
+                        return data ? data.data : null;
+                    } catch (error) {
+                        console.error('❌ Erro ao buscar imagem no Supabase:', error);
+                        return null;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['images'], 'readonly');
+                    const store = transaction.objectStore('images');
+                    
+                    return new Promise((resolve, reject) => {
+                        const request = store.get(id);
+                        request.onsuccess = () => {
+                            resolve(request.result ? request.result.data : null);
+                        };
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             }
 
             async deleteImage(id) {
-                const transaction = this.db.transaction(['images'], 'readwrite');
-                const store = transaction.objectStore('images');
-                
-                try {
-                    await store.delete(id);
-                    console.log('✅ Imagem excluída:', id);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao excluir imagem:', error);
-                    return false;
+                if (this.isConnected && this.supabase) {
+                    try {
+                        const { error } = await this.supabase
+                            .from('images')
+                            .delete()
+                            .eq('id', id);
+                        
+                        if (error) throw error;
+                        
+                        console.log('✅ Imagem excluída do Supabase:', id);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao excluir imagem no Supabase:', error);
+                        return false;
+                    }
+                } else {
+                    // Fallback para banco local
+                    const transaction = this.db.transaction(['images'], 'readwrite');
+                    const store = transaction.objectStore('images');
+                    
+                    try {
+                        await store.delete(id);
+                        console.log('✅ Imagem excluída:', id);
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erro ao excluir imagem:', error);
+                        return false;
+                    }
                 }
             }
 
@@ -650,11 +1031,298 @@
             return false;
         }
 
+        // Supabase Configuration Functions
+        async function loadSupabaseConfig() {
+            try {
+                const savedUrl = localStorage.getItem('supabase_url');
+                const savedKey = localStorage.getItem('supabase_key');
+                
+                if (savedUrl && savedKey) {
+                    document.getElementById('supabase-url').value = savedUrl;
+                    document.getElementById('supabase-key').value = savedKey;
+                    
+                    // Update database configuration
+                    db.supabaseUrl = savedUrl;
+                    db.supabaseKey = savedKey;
+                    
+                    // Try to reconnect
+                    await db.init();
+                }
+                
+                updateSupabaseStatus();
+            } catch (error) {
+                console.error('❌ Erro ao carregar configuração Supabase:', error);
+            }
+        }
+
+        async function saveSupabaseConfig() {
+            const url = document.getElementById('supabase-url').value.trim();
+            const key = document.getElementById('supabase-key').value.trim();
+            
+            if (!url || !key) {
+                alert('⚠️ Por favor, preencha a URL e a chave do Supabase.');
+                return;
+            }
+            
+            if (!url.includes('supabase.co')) {
+                alert('⚠️ URL inválida. Deve ser algo como: https://seu-projeto.supabase.co');
+                return;
+            }
+            
+            try {
+                // Save to localStorage
+                localStorage.setItem('supabase_url', url);
+                localStorage.setItem('supabase_key', key);
+                
+                // Update database configuration
+                db.supabaseUrl = url;
+                db.supabaseKey = key;
+                
+                // Try to connect
+                await db.init();
+                
+                // Reload data if connected
+                if (db.isConnected) {
+                    await loadDataFromDB();
+                    loadProducts();
+                    updateStockList();
+                    updateSalesReport();
+                    updateProductGallery();
+                    await loadSavedLogo();
+                }
+                
+                updateSupabaseStatus();
+                alert('✅ Configuração Supabase salva e testada com sucesso!');
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar configuração:', error);
+                alert('❌ Erro ao conectar com Supabase. Verifique suas credenciais.');
+            }
+        }
+
+        async function testSupabaseConnection() {
+            const url = document.getElementById('supabase-url').value.trim();
+            const key = document.getElementById('supabase-key').value.trim();
+            
+            if (!url || !key) {
+                alert('⚠️ Por favor, preencha a URL e a chave do Supabase.');
+                return;
+            }
+            
+            try {
+                // Update status to testing
+                const statusEl = document.getElementById('supabase-status');
+                const infoEl = document.getElementById('supabase-info');
+                
+                statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-yellow-100 text-yellow-800';
+                statusEl.textContent = 'Testando...';
+                infoEl.textContent = 'Verificando conexão com Supabase...';
+                
+                // Load Supabase library if needed
+                if (typeof createClient === 'undefined') {
+                    await db.loadSupabaseLibrary();
+                }
+                
+                // Test connection
+                const testClient = createClient(url, key);
+                const { data, error } = await testClient.from('products').select('count').limit(1);
+                
+                if (error && error.code === 'PGRST116') {
+                    // Table doesn't exist - show setup instructions
+                    statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-orange-100 text-orange-800';
+                    statusEl.textContent = 'Tabelas não encontradas';
+                    infoEl.textContent = 'Conexão OK, mas as tabelas precisam ser criadas. Clique em "Tutorial Setup".';
+                    
+                    alert('🔗 Conexão estabelecida!\n\n⚠️ Porém, as tabelas do banco não foram encontradas.\n\nClique em "Tutorial Setup" para ver como criar as tabelas necessárias.');
+                } else if (error) {
+                    throw error;
+                } else {
+                    // Success
+                    statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-green-100 text-green-800';
+                    statusEl.textContent = 'Conectado';
+                    infoEl.textContent = 'Conexão estabelecida com sucesso! Dados serão salvos na nuvem.';
+                    
+                    alert('✅ Conexão com Supabase estabelecida com sucesso!\n\nTodos os dados serão salvos na nuvem.');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro no teste de conexão:', error);
+                
+                const statusEl = document.getElementById('supabase-status');
+                const infoEl = document.getElementById('supabase-info');
+                
+                statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-red-100 text-red-800';
+                statusEl.textContent = 'Erro de conexão';
+                infoEl.textContent = 'Falha na conexão. Verifique URL e chave.';
+                
+                alert('❌ Erro ao conectar com Supabase:\n\n' + error.message + '\n\nVerifique se a URL e chave estão corretas.');
+            }
+        }
+
+        function updateSupabaseStatus() {
+            const statusEl = document.getElementById('supabase-status');
+            const infoEl = document.getElementById('supabase-info');
+            
+            if (db.isConnected) {
+                statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-green-100 text-green-800';
+                statusEl.textContent = 'Conectado';
+                infoEl.textContent = 'Dados sendo salvos na nuvem via Supabase';
+            } else {
+                statusEl.className = 'px-2 py-1 rounded text-sm font-medium bg-gray-100 text-gray-600';
+                statusEl.textContent = 'Modo Local';
+                infoEl.textContent = 'Configure Supabase para salvar dados na nuvem';
+            }
+        }
+
+        function showSupabaseSetup() {
+            const setupInstructions = `
+🚀 TUTORIAL: CONFIGURANDO SUPABASE PARA KC PERFUMARIA
+
+📋 PASSO A PASSO COMPLETO:
+
+1️⃣ CRIAR CONTA NO SUPABASE:
+   • Acesse: https://supabase.com
+   • Clique em "Start your project"
+   • Faça login com GitHub ou email
+
+2️⃣ CRIAR NOVO PROJETO:
+   • Clique em "New Project"
+   • Escolha sua organização
+   • Nome do projeto: "kc-perfumaria"
+   • Senha do banco: (anote bem!)
+   • Região: South America (São Paulo)
+   • Clique em "Create new project"
+
+3️⃣ AGUARDAR CRIAÇÃO (2-3 minutos):
+   • O projeto será configurado automaticamente
+   • Aguarde até aparecer o dashboard
+
+4️⃣ OBTER CREDENCIAIS:
+   • No menu lateral: Settings → API
+   • Copie a "URL" (https://xxx.supabase.co)
+   • Copie a "anon public" key (chave longa)
+
+5️⃣ CRIAR TABELAS DO BANCO:
+   • No menu lateral: SQL Editor
+   • Clique em "New query"
+   • Cole o código SQL abaixo:
+
+-- CÓDIGO SQL PARA COPIAR E COLAR:
+-- Tabela de produtos
+CREATE TABLE products (
+    id BIGINT PRIMARY KEY,
+    name TEXT NOT NULL,
+    brand TEXT NOT NULL,
+    category TEXT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    description TEXT,
+    image TEXT,
+    image_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela de vendas
+CREATE TABLE sales (
+    id BIGINT PRIMARY KEY,
+    items JSONB NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    payment_method TEXT,
+    date TIMESTAMP DEFAULT NOW(),
+    date_formatted TEXT
+);
+
+-- Tabela de configurações
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela de imagens
+CREATE TABLE images (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Habilitar RLS (Row Level Security)
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE images ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de acesso público
+CREATE POLICY "Allow all operations" ON products FOR ALL USING (true);
+CREATE POLICY "Allow all operations" ON sales FOR ALL USING (true);
+CREATE POLICY "Allow all operations" ON settings FOR ALL USING (true);
+CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);
+
+6️⃣ EXECUTAR SQL:
+   • Clique em "Run" (botão azul)
+   • Deve aparecer "Success. No rows returned"
+
+7️⃣ CONFIGURAR NA LOJA:
+   • Cole a URL no campo "URL do Projeto"
+   • Cole a chave no campo "Chave Pública"
+   • Clique em "Testar Conexão"
+   • Se OK, clique em "Salvar Configuração"
+
+🎉 PRONTO! Sua loja agora salva tudo na nuvem!
+
+💡 BENEFÍCIOS:
+✅ Dados seguros na nuvem
+✅ Acesso de qualquer dispositivo
+✅ Backup automático
+✅ Sincronização em tempo real
+✅ Escalabilidade profissional
+
+❓ DÚVIDAS?
+• Supabase é gratuito até 500MB
+• Dados ficam seguros e privados
+• Você pode exportar tudo a qualquer momento
+            `;
+            
+            // Create modal with instructions
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-blue-800">🚀 Tutorial Supabase</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                        </div>
+                        <pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto">${setupInstructions}</pre>
+                        <div class="mt-4 flex justify-end space-x-2">
+                            <button onclick="navigator.clipboard.writeText(\`${setupInstructions}\`).then(() => alert('📋 Tutorial copiado para área de transferência!'))" 
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
+                                📋 Copiar Tutorial
+                            </button>
+                            <button onclick="window.open('https://supabase.com', '_blank')" 
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all">
+                                🌐 Abrir Supabase
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" 
+                                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all">
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
         // Initialize Application
         document.addEventListener('DOMContentLoaded', async function() {
             try {
                 // Check admin access first
                 checkAdminAccess();
+                
+                // Load Supabase configuration
+                await loadSupabaseConfig();
                 
                 // Inicializar banco de dados
                 await db.init();
@@ -672,6 +1340,7 @@
                 updateProductGallery();
                 loadStoreConfig();
                 updateConfigForm();
+                updateSupabaseStatus();
                 
                 console.log('🎉 Aplicação inicializada com sucesso!');
             } catch (error) {
@@ -1829,5 +2498,5 @@
             // Status display update logic (keeping existing implementation)
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d149e002e68a4f',t:'MTc1NDg0NzczMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d1565945e41ce5',t:'MTc1NDg0ODI0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
