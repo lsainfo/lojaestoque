@@ -45,11 +45,12 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
-                        🛒 Carrinho (<span id="cart-count">0</span>)
+                    <!-- Admin Access Button (only visible with admin parameter) -->
+                    <button id="admin-access-btn" onclick="toggleAdmin()" class="hidden bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all text-sm">
+                        ⚙️ <span class="hidden sm:inline">Admin</span>
                     </button>
-                    <button onclick="toggleAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
-                        ⚙️ Admin
+                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                        🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
                     </button>
                 </div>
             </div>
@@ -62,21 +63,21 @@
         <div id="customer-view">
             <!-- Brand Filters -->
             <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Marcas</h2>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="filterByBrand('todas')" class="brand-btn active bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-all">
-                        Todas as Marcas
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Marcas</h2>
+                <div class="flex flex-wrap gap-2 sm:gap-3">
+                    <button onclick="filterByBrand('todas')" class="brand-btn active bg-purple-600 text-white px-3 sm:px-6 py-2 rounded-full hover:bg-purple-700 transition-all text-sm sm:text-base">
+                        Todas
                     </button>
-                    <button onclick="filterByBrand('boticario')" class="brand-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterByBrand('boticario')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         🌿 Boticário
                     </button>
-                    <button onclick="filterByBrand('mary-kay')" class="brand-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterByBrand('mary-kay')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         💎 Mary Kay
                     </button>
-                    <button onclick="filterByBrand('eudora')" class="brand-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterByBrand('eudora')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         ✨ Eudora
                     </button>
-                    <button onclick="filterByBrand('natura')" class="brand-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterByBrand('natura')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         🍃 Natura
                     </button>
                 </div>
@@ -84,25 +85,25 @@
 
             <!-- Categories -->
             <div class="mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Categorias</h2>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="filterProducts('todos')" class="category-btn active bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-all">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Categorias</h2>
+                <div class="flex flex-wrap gap-2 sm:gap-3">
+                    <button onclick="filterProducts('todos')" class="category-btn active bg-indigo-600 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-indigo-700 transition-all text-sm sm:text-base">
                         Todos
                     </button>
-                    <button onclick="filterProducts('perfumes')" class="category-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterProducts('perfumes')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         Perfumes
                     </button>
-                    <button onclick="filterProducts('cosmeticos')" class="category-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterProducts('cosmeticos')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         Cosméticos
                     </button>
-                    <button onclick="filterProducts('cuidados')" class="category-btn bg-gray-200 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-300 transition-all">
+                    <button onclick="filterProducts('cuidados')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
                         Cuidados
                     </button>
                 </div>
             </div>
 
             <!-- Products Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="products-grid">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="products-grid">
                 <!-- Products will be loaded here -->
             </div>
         </div>
@@ -258,7 +259,7 @@
     </div>
 
     <!-- Cart Sidebar -->
-    <div id="cart-sidebar" class="cart-sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col">
+    <div id="cart-sidebar" class="cart-sidebar fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col">
         <div class="p-6 border-b border-gray-200">
             <div class="flex justify-between items-center">
                 <h3 class="text-xl font-bold">Carrinho de Compras</h3>
@@ -618,9 +619,43 @@
             }
         };
 
+        // Check for admin access
+        function checkAdminAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const adminParam = urlParams.get('admin');
+            
+            if (adminParam === 'kc2024' || adminParam === 'kelly' || adminParam === 'admin') {
+                // Show admin button
+                const adminBtn = document.getElementById('admin-access-btn');
+                if (adminBtn) {
+                    adminBtn.classList.remove('hidden');
+                }
+                
+                // Store admin access in session
+                sessionStorage.setItem('kc_admin_access', 'true');
+                
+                console.log('🔑 Acesso administrativo concedido!');
+                return true;
+            }
+            
+            // Check if admin access was previously granted in this session
+            if (sessionStorage.getItem('kc_admin_access') === 'true') {
+                const adminBtn = document.getElementById('admin-access-btn');
+                if (adminBtn) {
+                    adminBtn.classList.remove('hidden');
+                }
+                return true;
+            }
+            
+            return false;
+        }
+
         // Initialize Application
         document.addEventListener('DOMContentLoaded', async function() {
             try {
+                // Check admin access first
+                checkAdminAccess();
+                
                 // Inicializar banco de dados
                 await db.init();
                 
@@ -1538,18 +1573,27 @@
 
         // Admin Functions
         function toggleAdmin() {
+            // Check if user has admin access
+            if (sessionStorage.getItem('kc_admin_access') !== 'true') {
+                alert('🔒 Acesso negado! Use o link administrativo para acessar esta área.');
+                return;
+            }
+            
             const customerView = document.getElementById('customer-view');
             const adminPanel = document.getElementById('admin-panel');
+            const adminBtn = document.getElementById('admin-access-btn');
             
             if (adminPanel.style.display === 'none' || !adminPanel.style.display) {
                 customerView.style.display = 'none';
                 adminPanel.style.display = 'block';
+                adminBtn.innerHTML = '👁️ <span class="hidden sm:inline">Loja</span>';
                 updateStockList();
                 updateSalesReport();
                 updateProductGallery();
             } else {
                 customerView.style.display = 'block';
                 adminPanel.style.display = 'none';
+                adminBtn.innerHTML = '⚙️ <span class="hidden sm:inline">Admin</span>';
             }
         }
 
@@ -1794,5 +1838,5 @@
             // Status display update logic (keeping existing implementation)
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d1392887471b1c',t:'MTc1NDg0NzA0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d13fe094da02df',t:'MTc1NDg0NzMyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
