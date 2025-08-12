@@ -989,159 +989,248 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             }
         }
 
-        // Load data from localStorage with recovery options
+        // Enhanced data loading with multiple recovery methods
         function loadDataFromStorage() {
             try {
-                console.log('📂 Carregando dados do localStorage...');
+                console.log('📂 Iniciando carregamento de dados...');
                 
                 // Initialize arrays
                 products = [];
                 sales = [];
                 
-                // Try to load products
-                const savedProducts = localStorage.getItem('kc_products');
-                if (savedProducts) {
+                // Method 1: Try primary store data
+                const primaryData = localStorage.getItem('kc_store_data');
+                if (primaryData) {
                     try {
-                        const parsedProducts = JSON.parse(savedProducts);
-                        if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
-                            products = parsedProducts;
-                            console.log(`📦 ${products.length} produtos carregados do localStorage`);
+                        const parsed = JSON.parse(primaryData);
+                        if (parsed.products && Array.isArray(parsed.products)) {
+                            products = parsed.products;
+                            console.log(`📦 ${products.length} produtos carregados do armazenamento principal`);
+                        }
+                        if (parsed.sales && Array.isArray(parsed.sales)) {
+                            sales = parsed.sales;
+                            console.log(`💰 ${sales.length} vendas carregadas do armazenamento principal`);
                         }
                     } catch (parseError) {
-                        console.error('❌ Erro ao parsear produtos:', parseError);
-                        
-                        // Try emergency backup
-                        const emergencyProducts = localStorage.getItem('kc_products_emergency');
-                        if (emergencyProducts) {
-                            try {
-                                products = JSON.parse(emergencyProducts);
+                        console.warn('⚠️ Erro no armazenamento principal, tentando método alternativo...');
+                    }
+                }
+                
+                // Method 2: Try individual arrays if primary failed
+                if (products.length === 0) {
+                    const savedProducts = localStorage.getItem('kc_products');
+                    if (savedProducts) {
+                        try {
+                            const parsedProducts = JSON.parse(savedProducts);
+                            if (Array.isArray(parsedProducts)) {
+                                products = parsedProducts;
+                                console.log(`📦 ${products.length} produtos carregados do armazenamento secundário`);
+                            }
+                        } catch (parseError) {
+                            console.warn('⚠️ Erro no armazenamento secundário...');
+                        }
+                    }
+                }
+                
+                if (sales.length === 0) {
+                    const savedSales = localStorage.getItem('kc_sales');
+                    if (savedSales) {
+                        try {
+                            const parsedSales = JSON.parse(savedSales);
+                            if (Array.isArray(parsedSales)) {
+                                sales = parsedSales;
+                                console.log(`💰 ${sales.length} vendas carregadas do armazenamento secundário`);
+                            }
+                        } catch (parseError) {
+                            console.warn('⚠️ Erro ao carregar vendas...');
+                        }
+                    }
+                }
+                
+                // Method 3: Try emergency backup if still empty
+                if (products.length === 0) {
+                    const emergencyData = localStorage.getItem('kc_emergency_save');
+                    if (emergencyData) {
+                        try {
+                            const parsed = JSON.parse(emergencyData);
+                            if (parsed.products && Array.isArray(parsed.products)) {
+                                products = parsed.products;
                                 console.log(`🆘 ${products.length} produtos recuperados do backup de emergência`);
-                            } catch (emergencyError) {
-                                console.error('❌ Falha no backup de emergência:', emergencyError);
+                            }
+                        } catch (emergencyError) {
+                            console.warn('⚠️ Backup de emergência também falhou...');
+                        }
+                    }
+                }
+                
+                // Method 4: Try timestamped backups
+                if (products.length === 0) {
+                    try {
+                        const keys = Object.keys(localStorage);
+                        const backupKeys = keys.filter(key => key.startsWith('kc_backup_')).sort().reverse();
+                        
+                        for (const backupKey of backupKeys) {
+                            try {
+                                const backupData = JSON.parse(localStorage.getItem(backupKey));
+                                if (backupData.products && Array.isArray(backupData.products) && backupData.products.length > 0) {
+                                    products = backupData.products;
+                                    if (backupData.sales && Array.isArray(backupData.sales)) {
+                                        sales = backupData.sales;
+                                    }
+                                    console.log(`🔄 ${products.length} produtos recuperados do backup: ${backupKey}`);
+                                    break;
+                                }
+                            } catch (backupError) {
+                                console.warn(`⚠️ Erro no backup ${backupKey}:`, backupError);
                             }
                         }
+                    } catch (backupSearchError) {
+                        console.warn('⚠️ Erro na busca por backups:', backupSearchError);
                     }
                 }
                 
-                // Try to load sales
-                const savedSales = localStorage.getItem('kc_sales');
-                if (savedSales) {
-                    try {
-                        const parsedSales = JSON.parse(savedSales);
-                        if (Array.isArray(parsedSales)) {
-                            sales = parsedSales;
-                            console.log(`💰 ${sales.length} vendas carregadas do localStorage`);
-                        }
-                    } catch (parseError) {
-                        console.error('❌ Erro ao parsear vendas:', parseError);
-                        sales = [];
-                    }
-                }
-                
-                // Load logo from localStorage
+                // Load logo
                 const localLogo = localStorage.getItem('kc_logo');
                 if (localLogo) {
                     try {
                         updateLogo(localLogo);
                         updateAdminLogoPreview(localLogo);
-                        console.log('🖼️ Logo carregada do localStorage');
+                        console.log('🖼️ Logo carregada');
                     } catch (logoError) {
-                        console.error('❌ Erro ao carregar logo:', logoError);
+                        console.warn('⚠️ Erro ao carregar logo:', logoError);
                     }
                 }
                 
-                console.log(`✅ Carregamento concluído: ${products.length} produtos, ${sales.length} vendas`);
+                console.log(`✅ Carregamento finalizado: ${products.length} produtos, ${sales.length} vendas`);
                 
-                // Force save to ensure data integrity
+                // Ensure data integrity by saving immediately
                 if (products.length > 0 || sales.length > 0) {
                     setTimeout(() => {
+                        console.log('🔄 Verificando integridade dos dados...');
                         saveDataToStorage();
-                    }, 100);
+                    }, 500);
                 }
                 
                 return true;
                 
             } catch (error) {
-                console.error('❌ Erro crítico ao carregar dados:', error);
+                console.error('❌ Erro crítico no carregamento:', error);
                 
-                // Try to recover from backup
-                try {
-                    const backup = localStorage.getItem('kc_backup');
-                    if (backup) {
-                        const parsedBackup = JSON.parse(backup);
-                        products = parsedBackup.products || [];
-                        sales = parsedBackup.sales || [];
-                        console.log(`🔄 Dados recuperados do backup: ${products.length} produtos, ${sales.length} vendas`);
-                        return true;
-                    }
-                } catch (backupError) {
-                    console.error('❌ Falha na recuperação do backup:', backupError);
-                }
-                
-                // Initialize empty arrays as last resort
+                // Last resort: initialize empty
                 products = [];
                 sales = [];
-                console.log('🆕 Inicializando com dados vazios');
+                console.log('🆕 Inicializando com dados vazios devido a erro crítico');
                 return false;
             }
         }
 
-        // Save data to localStorage with enhanced error handling
+        // Enhanced save system with multiple fallbacks
         function saveDataToStorage() {
             try {
-                console.log(`💾 Salvando dados: ${products.length} produtos, ${sales.length} vendas`);
+                console.log(`💾 Iniciando salvamento: ${products.length} produtos, ${sales.length} vendas`);
                 
-                // Create backup before saving
-                const backup = {
-                    products: [...products],
-                    sales: [...sales],
-                    timestamp: new Date().toISOString()
+                // Create comprehensive backup
+                const dataToSave = {
+                    products: products,
+                    sales: sales,
+                    timestamp: new Date().toISOString(),
+                    version: '2.0'
                 };
                 
-                // Save individual arrays
+                // Primary save - complete data
+                localStorage.setItem('kc_store_data', JSON.stringify(dataToSave));
+                
+                // Secondary saves - individual arrays
                 localStorage.setItem('kc_products', JSON.stringify(products));
                 localStorage.setItem('kc_sales', JSON.stringify(sales));
-                localStorage.setItem('kc_backup', JSON.stringify(backup));
                 
-                // Immediate verification
-                const savedProducts = localStorage.getItem('kc_products');
-                const savedSales = localStorage.getItem('kc_sales');
+                // Tertiary save - emergency backup
+                localStorage.setItem('kc_backup_' + Date.now(), JSON.stringify(dataToSave));
                 
-                if (savedProducts && savedSales) {
-                    const parsedProducts = JSON.parse(savedProducts);
-                    const parsedSales = JSON.parse(savedSales);
-                    
-                    if (parsedProducts.length === products.length && parsedSales.length === sales.length) {
-                        console.log('✅ Dados salvos e verificados no localStorage');
-                        console.log(`📊 Produtos salvos: ${parsedProducts.length}, Vendas: ${parsedSales.length}`);
-                        return true;
-                    } else {
-                        console.error('❌ Verificação falhou: dados não coincidem');
+                // Immediate verification with multiple checks
+                const primaryCheck = localStorage.getItem('kc_store_data');
+                const secondaryCheck = localStorage.getItem('kc_products');
+                
+                if (primaryCheck && secondaryCheck) {
+                    try {
+                        const parsedPrimary = JSON.parse(primaryCheck);
+                        const parsedSecondary = JSON.parse(secondaryCheck);
+                        
+                        const primaryValid = parsedPrimary.products && parsedPrimary.products.length === products.length;
+                        const secondaryValid = parsedSecondary.length === products.length;
+                        
+                        if (primaryValid && secondaryValid) {
+                            console.log('✅ Dados salvos e verificados com sucesso!');
+                            console.log(`📊 Verificação: ${parsedPrimary.products.length} produtos salvos`);
+                            
+                            // Clean old backups (keep only last 5)
+                            cleanOldBackups();
+                            
+                            return true;
+                        } else {
+                            console.error('❌ Verificação de integridade falhou');
+                            console.error(`Primary valid: ${primaryValid}, Secondary valid: ${secondaryValid}`);
+                            return false;
+                        }
+                    } catch (parseError) {
+                        console.error('❌ Erro ao verificar dados salvos:', parseError);
                         return false;
                     }
                 } else {
-                    console.error('❌ Falha ao salvar no localStorage');
+                    console.error('❌ Dados não foram salvos corretamente');
                     return false;
                 }
                 
             } catch (error) {
-                console.error('❌ Erro crítico ao salvar dados:', error);
+                console.error('❌ Erro crítico no salvamento:', error);
                 
-                // Try to save minimal data
+                // Emergency save attempt
                 try {
-                    localStorage.setItem('kc_products_emergency', JSON.stringify(products.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        price: p.price,
-                        stock: p.stock
-                    }))));
-                    console.log('🆘 Backup de emergência salvo');
+                    const emergencyData = {
+                        products: products.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            brand: p.brand,
+                            category: p.category,
+                            price: p.price,
+                            stock: p.stock,
+                            description: p.description || '',
+                            image: p.image || '🌸',
+                            imageUrl: p.imageUrl || null
+                        })),
+                        emergency: true,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('kc_emergency_save', JSON.stringify(emergencyData));
+                    console.log('🆘 Salvamento de emergência realizado');
+                    
+                    alert('⚠️ Salvamento principal falhou, mas backup de emergência foi criado.');
+                    return false;
                 } catch (emergencyError) {
-                    console.error('❌ Falha no backup de emergência:', emergencyError);
+                    console.error('❌ Falha total no salvamento:', emergencyError);
+                    alert('❌ ERRO CRÍTICO: Não foi possível salvar os dados. Verifique o espaço de armazenamento do navegador.');
+                    return false;
                 }
+            }
+        }
+
+        // Clean old backup files
+        function cleanOldBackups() {
+            try {
+                const keys = Object.keys(localStorage);
+                const backupKeys = keys.filter(key => key.startsWith('kc_backup_')).sort();
                 
-                alert('⚠️ Erro ao salvar dados. Verifique o espaço disponível no navegador.');
-                return false;
+                // Keep only the 5 most recent backups
+                if (backupKeys.length > 5) {
+                    const toDelete = backupKeys.slice(0, backupKeys.length - 5);
+                    toDelete.forEach(key => {
+                        localStorage.removeItem(key);
+                    });
+                    console.log(`🧹 Limpeza: ${toDelete.length} backups antigos removidos`);
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro na limpeza de backups:', error);
             }
         }
 
@@ -1844,7 +1933,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
         document.getElementById('add-product-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            console.log('📝 Adicionando novo produto...');
+            console.log('📝 === INICIANDO ADIÇÃO DE PRODUTO ===');
             
             const newProduct = {
                 id: Date.now(),
@@ -1865,38 +1954,90 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 return;
             }
 
-            console.log('📦 Produto criado:', newProduct);
+            console.log('📦 Produto criado:', {
+                id: newProduct.id,
+                name: newProduct.name,
+                brand: newProduct.brand,
+                category: newProduct.category,
+                price: newProduct.price,
+                stock: newProduct.stock
+            });
 
             try {
-                // Add to memory first
-                products.push(newProduct);
-                console.log(`📊 Total de produtos na memória: ${products.length}`);
+                // STEP 1: Check current state
+                console.log(`📊 Estado ANTES: ${products.length} produtos na memória`);
                 
-                // CRITICAL: Save to localStorage immediately and verify
-                const saveSuccess = saveDataToStorage();
+                // STEP 2: Add to memory
+                products.push(newProduct);
+                console.log(`📊 Estado DEPOIS: ${products.length} produtos na memória`);
+                console.log('✅ Produto adicionado à memória');
+                
+                // STEP 3: CRITICAL SAVE - Multiple attempts
+                console.log('💾 === INICIANDO SALVAMENTO CRÍTICO ===');
+                
+                let saveAttempts = 0;
+                let saveSuccess = false;
+                
+                while (saveAttempts < 3 && !saveSuccess) {
+                    saveAttempts++;
+                    console.log(`💾 Tentativa de salvamento ${saveAttempts}/3...`);
+                    
+                    saveSuccess = saveDataToStorage();
+                    
+                    if (saveSuccess) {
+                        console.log(`✅ Salvamento bem-sucedido na tentativa ${saveAttempts}`);
+                        break;
+                    } else {
+                        console.error(`❌ Falha na tentativa ${saveAttempts}`);
+                        if (saveAttempts < 3) {
+                            console.log('🔄 Aguardando 1 segundo antes da próxima tentativa...');
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                }
                 
                 if (!saveSuccess) {
-                    console.error('❌ Falha crítica no salvamento localStorage');
+                    console.error('❌ FALHA CRÍTICA: Todas as tentativas de salvamento falharam');
                     products.pop(); // Remove from memory
-                    alert('❌ Erro ao salvar produto. Tente novamente.');
+                    alert('❌ ERRO CRÍTICO: Não foi possível salvar o produto após 3 tentativas.\n\nVerifique:\n• Espaço disponível no navegador\n• Se não há outros sites usando muito armazenamento\n• Tente fechar outras abas');
                     return;
                 }
                 
-                // Try to save to Supabase (secondary)
+                // STEP 4: Verify save immediately
+                console.log('🔍 === VERIFICAÇÃO IMEDIATA ===');
+                const verification = localStorage.getItem('kc_store_data');
+                if (verification) {
+                    try {
+                        const parsed = JSON.parse(verification);
+                        const savedCount = parsed.products ? parsed.products.length : 0;
+                        console.log(`🔍 Verificação: ${savedCount} produtos salvos no localStorage`);
+                        
+                        if (savedCount === products.length) {
+                            console.log('✅ Verificação PASSOU: Dados salvos corretamente');
+                        } else {
+                            console.error(`❌ Verificação FALHOU: Esperado ${products.length}, encontrado ${savedCount}`);
+                        }
+                    } catch (verifyError) {
+                        console.error('❌ Erro na verificação:', verifyError);
+                    }
+                } else {
+                    console.error('❌ Verificação FALHOU: Dados não encontrados no localStorage');
+                }
+                
+                // STEP 5: Try Supabase (optional)
                 if (db.connected) {
                     try {
+                        console.log('☁️ Tentando salvar no Supabase...');
                         const supabaseSuccess = await db.saveProduct(newProduct);
                         
                         if (supabaseSuccess) {
-                            // Save product image if exists
                             if (currentProductImage) {
                                 await db.saveImage(`product_${newProduct.id}`, currentProductImage);
                             }
-                            
                             db.showDBStatus('✅ Produto salvo no Supabase!');
-                            console.log('✅ Produto salvo no Supabase:', newProduct.name);
+                            console.log('✅ Produto salvo no Supabase');
                         } else {
-                            console.warn('⚠️ Falha ao salvar no Supabase, mas localStorage funcionou');
+                            console.warn('⚠️ Falha no Supabase, mas localStorage funcionou');
                         }
                     } catch (supabaseError) {
                         console.error('❌ Erro no Supabase:', supabaseError);
@@ -1906,15 +2047,16 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     console.log('⚠️ Supabase desconectado, produto salvo no localStorage');
                 }
                 
-                // Update displays
+                // STEP 6: Update interface
+                console.log('🔄 Atualizando interface...');
                 loadProducts();
                 updateProductGallery();
                 
-                // Reset form
+                // STEP 7: Reset form
+                console.log('🧹 Limpando formulário...');
                 this.reset();
                 currentProductImage = null;
                 
-                // Reset image preview
                 const previewContainer = document.getElementById('image-preview-container');
                 const uploadPlaceholder = document.getElementById('upload-placeholder');
                 if (previewContainer && uploadPlaceholder) {
@@ -1922,25 +2064,46 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     uploadPlaceholder.classList.remove('hidden');
                 }
                 
-                // Clear file input
                 const imageInput = document.getElementById('product-image-input');
                 if (imageInput) {
                     imageInput.value = '';
                 }
                 
-                console.log('✅ Produto adicionado com sucesso!');
-                alert(`✅ Produto "${newProduct.name}" adicionado com sucesso!\n\n💾 Dados salvos permanentemente.\n📊 Total de produtos: ${products.length}`);
+                // STEP 8: Final verification
+                console.log('🏁 === VERIFICAÇÃO FINAL ===');
+                setTimeout(() => {
+                    const finalCheck = localStorage.getItem('kc_store_data');
+                    if (finalCheck) {
+                        try {
+                            const parsed = JSON.parse(finalCheck);
+                            const finalCount = parsed.products ? parsed.products.length : 0;
+                            console.log(`🏁 Verificação final: ${finalCount} produtos persistidos`);
+                            
+                            if (finalCount === products.length) {
+                                console.log('🎉 SUCESSO TOTAL: Produto salvo e persistido com sucesso!');
+                            } else {
+                                console.error('❌ PROBLEMA: Dados podem não ter sido persistidos corretamente');
+                            }
+                        } catch (finalError) {
+                            console.error('❌ Erro na verificação final:', finalError);
+                        }
+                    }
+                }, 2000);
+                
+                console.log('✅ === PRODUTO ADICIONADO COM SUCESSO ===');
+                alert(`✅ Produto "${newProduct.name}" adicionado com sucesso!\n\n💾 Dados salvos e verificados\n📊 Total de produtos: ${products.length}\n\n🔄 Atualize a página para confirmar que o produto foi salvo permanentemente!`);
                 
             } catch (error) {
-                console.error('❌ Erro crítico ao adicionar produto:', error);
+                console.error('❌ === ERRO CRÍTICO ===', error);
                 
                 // Remove from memory if save failed
                 const index = products.findIndex(p => p.id === newProduct.id);
                 if (index > -1) {
                     products.splice(index, 1);
+                    console.log('🔄 Produto removido da memória devido ao erro');
                 }
                 
-                alert('❌ Erro ao salvar produto. Verifique o console para detalhes e tente novamente.');
+                alert(`❌ ERRO CRÍTICO ao salvar produto!\n\nDetalhes do erro:\n${error.message}\n\nVerifique o console (F12) para mais informações.`);
             }
         });
 
@@ -1960,5 +2123,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3c4c8d4f0b30b',t:'MTc1NTA0MTUxMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3d30a65487a84',t:'MTc1NTA0MjA5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
