@@ -28,7 +28,7 @@
 <body class="bg-gray-50">
     <!-- Database Status Indicator -->
     <div id="db-status" class="db-status bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hidden">
-        💾 Banco de Dados Conectado
+        ✅ Dados salvos!
     </div>
 
     <!-- Header -->
@@ -293,8 +293,8 @@
                     }
                     
                     this.connected = true;
-                    console.log('✅ Conectado ao Supabase!');
-                    this.showDBStatus('✅ Conectado ao Supabase', 'bg-green-100 text-green-800');
+                    console.log('✅ Banco de dados conectado!');
+                    this.showDBStatus('✅ Sistema conectado', 'bg-green-100 text-green-800');
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao inicializar Supabase:', error);
@@ -311,10 +311,10 @@
                     statusEl.className = `db-status px-3 py-1 rounded-full text-sm font-medium ${className}`;
                     statusEl.classList.remove('hidden');
                     
-                    // Auto hide after 5 seconds
+                    // Auto hide after 3 seconds
                     setTimeout(() => {
                         statusEl.classList.add('hidden');
-                    }, 5000);
+                    }, 3000);
                 }
             },
 
@@ -889,329 +889,172 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             alert('📥 Arquivo baixado!\n\n✅ Sua loja foi preparada para hospedagem no Supabase.\n\n📋 Siga as instruções no arquivo baixado para colocar sua loja online!');
         }
 
-        // Initialize Application
+        // 🚀 INICIALIZAÇÃO DA APLICAÇÃO
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                console.log('🚀 Inicializando KC Perfumaria...');
+                console.log('🚀 === INICIALIZANDO KC PERFUMARIA ===');
                 
-                // Initialize arrays
+                // Inicializar arrays
                 products = [];
                 sales = [];
                 cart = [];
                 
-                // Check admin access first
+                // Verificar acesso admin
                 checkAdminAccess();
                 
-                // Always load from localStorage first (immediate data)
-                loadDataFromStorage();
-                
-                // Initialize interface with localStorage data
-                loadProducts();
+                // Configurar upload de imagens
                 setupProductImageUpload();
-                updateProductGallery();
                 
-                // Then try to connect to Supabase in background
-                try {
-                    const dbConnected = await db.init();
-                    
-                    if (dbConnected) {
-                        console.log('🔄 Sincronizando com Supabase...');
-                        // Load data from Supabase and merge/update
-                        await loadDataFromSupabase();
-                        
-                        // Refresh interface with Supabase data
-                        loadProducts();
-                        updateProductGallery();
-                    }
-                } catch (dbError) {
-                    console.warn('⚠️ Supabase indisponível, usando apenas localStorage:', dbError);
+                // Conectar ao Supabase
+                console.log('🔌 Conectando ao banco de dados...');
+                const dbConnected = await db.init();
+                
+                if (dbConnected) {
+                    console.log('✅ Banco conectado! Carregando dados...');
+                } else {
+                    console.log('⚠️ Banco desconectado, usando dados locais...');
                 }
                 
-                console.log('🎉 KC Perfumaria inicializada com sucesso!');
-                console.log(`📊 Estado atual: ${products.length} produtos, ${sales.length} vendas`);
+                // 🎯 PONTO CHAVE: Usar função central de sincronização
+                await loadAndRenderProducts();
+                
+                // Carregar vendas
+                if (dbConnected) {
+                    const supabaseSales = await db.loadSales();
+                    if (supabaseSales && supabaseSales.length > 0) {
+                        sales = supabaseSales;
+                        console.log(`💰 ${sales.length} vendas carregadas`);
+                    }
+                }
+                
+                // Carregar logo
+                await loadLogo();
+                
+                console.log('🎉 === INICIALIZAÇÃO CONCLUÍDA ===');
+                console.log(`📊 Estado final: ${products.length} produtos, ${sales.length} vendas`);
                 
             } catch (error) {
-                console.error('❌ Erro ao inicializar aplicação:', error);
-                // Ensure arrays are initialized even on error
-                products = products || [];
-                sales = sales || [];
+                console.error('❌ Erro crítico na inicialização:', error);
+                
+                // Fallback de emergência
+                products = [];
+                sales = [];
                 cart = [];
                 
-                // Try to load interface anyway
-                loadProducts();
                 setupProductImageUpload();
+                renderProducts();
                 updateProductGallery();
             }
         });
 
-        // Load data from Supabase
-        async function loadDataFromSupabase() {
+        // Função para carregar logo
+        async function loadLogo() {
             try {
-                console.log('📡 Carregando dados do Supabase...');
-                
-                // Load products
-                const supabaseProducts = await db.loadProducts();
-                if (supabaseProducts.length > 0) {
-                    products = supabaseProducts;
-                    console.log(`📦 ${products.length} produtos carregados do Supabase`);
-                } else {
-                    // Initialize with default data if no products exist
-                    await initializeDefaultDataSupabase();
-                }
-                
-                // Load sales
-                const supabaseSales = await db.loadSales();
-                if (supabaseSales.length > 0) {
-                    sales = supabaseSales;
-                    console.log(`💰 ${sales.length} vendas carregadas do Supabase`);
-                }
-                
-                // Load logo
-                const logoData = await db.getImage('logo');
-                if (logoData) {
-                    updateLogo(logoData);
-                    updateAdminLogoPreview(logoData);
-                    console.log('🖼️ Logo carregada do Supabase');
-                } else {
-                    // Try localStorage fallback
-                    const localLogo = localStorage.getItem('kc_logo');
-                    if (localLogo) {
-                        updateLogo(localLogo);
-                        updateAdminLogoPreview(localLogo);
-                        console.log('🖼️ Logo carregada do localStorage');
+                // Tentar carregar do Supabase primeiro
+                if (db.connected) {
+                    const logoData = await db.getImage('logo');
+                    if (logoData) {
+                        updateLogo(logoData);
+                        updateAdminLogoPreview(logoData);
+                        console.log('🖼️ Logo carregada do Supabase');
+                        return;
                     }
                 }
                 
-            } catch (error) {
-                console.error('❌ Erro ao carregar dados do Supabase:', error);
-                // Fallback to localStorage
-                loadDataFromStorage();
-            }
-        }
-
-        // Enhanced data loading with multiple recovery methods
-        function loadDataFromStorage() {
-            try {
-                console.log('📂 Iniciando carregamento de dados...');
-                
-                // Initialize arrays
-                products = [];
-                sales = [];
-                
-                // Method 1: Try primary store data
-                const primaryData = localStorage.getItem('kc_store_data');
-                if (primaryData) {
-                    try {
-                        const parsed = JSON.parse(primaryData);
-                        if (parsed.products && Array.isArray(parsed.products)) {
-                            products = parsed.products;
-                            console.log(`📦 ${products.length} produtos carregados do armazenamento principal`);
-                        }
-                        if (parsed.sales && Array.isArray(parsed.sales)) {
-                            sales = parsed.sales;
-                            console.log(`💰 ${sales.length} vendas carregadas do armazenamento principal`);
-                        }
-                    } catch (parseError) {
-                        console.warn('⚠️ Erro no armazenamento principal, tentando método alternativo...');
-                    }
-                }
-                
-                // Method 2: Try individual arrays if primary failed
-                if (products.length === 0) {
-                    const savedProducts = localStorage.getItem('kc_products');
-                    if (savedProducts) {
-                        try {
-                            const parsedProducts = JSON.parse(savedProducts);
-                            if (Array.isArray(parsedProducts)) {
-                                products = parsedProducts;
-                                console.log(`📦 ${products.length} produtos carregados do armazenamento secundário`);
-                            }
-                        } catch (parseError) {
-                            console.warn('⚠️ Erro no armazenamento secundário...');
-                        }
-                    }
-                }
-                
-                if (sales.length === 0) {
-                    const savedSales = localStorage.getItem('kc_sales');
-                    if (savedSales) {
-                        try {
-                            const parsedSales = JSON.parse(savedSales);
-                            if (Array.isArray(parsedSales)) {
-                                sales = parsedSales;
-                                console.log(`💰 ${sales.length} vendas carregadas do armazenamento secundário`);
-                            }
-                        } catch (parseError) {
-                            console.warn('⚠️ Erro ao carregar vendas...');
-                        }
-                    }
-                }
-                
-                // Method 3: Try emergency backup if still empty
-                if (products.length === 0) {
-                    const emergencyData = localStorage.getItem('kc_emergency_save');
-                    if (emergencyData) {
-                        try {
-                            const parsed = JSON.parse(emergencyData);
-                            if (parsed.products && Array.isArray(parsed.products)) {
-                                products = parsed.products;
-                                console.log(`🆘 ${products.length} produtos recuperados do backup de emergência`);
-                            }
-                        } catch (emergencyError) {
-                            console.warn('⚠️ Backup de emergência também falhou...');
-                        }
-                    }
-                }
-                
-                // Method 4: Try timestamped backups
-                if (products.length === 0) {
-                    try {
-                        const keys = Object.keys(localStorage);
-                        const backupKeys = keys.filter(key => key.startsWith('kc_backup_')).sort().reverse();
-                        
-                        for (const backupKey of backupKeys) {
-                            try {
-                                const backupData = JSON.parse(localStorage.getItem(backupKey));
-                                if (backupData.products && Array.isArray(backupData.products) && backupData.products.length > 0) {
-                                    products = backupData.products;
-                                    if (backupData.sales && Array.isArray(backupData.sales)) {
-                                        sales = backupData.sales;
-                                    }
-                                    console.log(`🔄 ${products.length} produtos recuperados do backup: ${backupKey}`);
-                                    break;
-                                }
-                            } catch (backupError) {
-                                console.warn(`⚠️ Erro no backup ${backupKey}:`, backupError);
-                            }
-                        }
-                    } catch (backupSearchError) {
-                        console.warn('⚠️ Erro na busca por backups:', backupSearchError);
-                    }
-                }
-                
-                // Load logo
+                // Fallback para localStorage
                 const localLogo = localStorage.getItem('kc_logo');
                 if (localLogo) {
-                    try {
-                        updateLogo(localLogo);
-                        updateAdminLogoPreview(localLogo);
-                        console.log('🖼️ Logo carregada');
-                    } catch (logoError) {
-                        console.warn('⚠️ Erro ao carregar logo:', logoError);
-                    }
+                    updateLogo(localLogo);
+                    updateAdminLogoPreview(localLogo);
+                    console.log('🖼️ Logo carregada do localStorage');
                 }
-                
-                console.log(`✅ Carregamento finalizado: ${products.length} produtos, ${sales.length} vendas`);
-                
-                // Ensure data integrity by saving immediately
-                if (products.length > 0 || sales.length > 0) {
-                    setTimeout(() => {
-                        console.log('🔄 Verificando integridade dos dados...');
-                        saveDataToStorage();
-                    }, 500);
-                }
-                
-                return true;
                 
             } catch (error) {
-                console.error('❌ Erro crítico no carregamento:', error);
-                
-                // Last resort: initialize empty
-                products = [];
-                sales = [];
-                console.log('🆕 Inicializando com dados vazios devido a erro crítico');
-                return false;
+                console.error('❌ Erro ao carregar logo:', error);
             }
         }
 
-        // Enhanced save system with multiple fallbacks
-        function saveDataToStorage() {
+        // 🔄 FUNÇÃO CENTRAL DE SINCRONIZAÇÃO
+        async function loadAndRenderProducts() {
             try {
-                console.log(`💾 Iniciando salvamento: ${products.length} produtos, ${sales.length} vendas`);
+                console.log('🔄 === SINCRONIZAÇÃO CENTRAL INICIADA ===');
                 
-                // Create comprehensive backup
-                const dataToSave = {
-                    products: products,
-                    sales: sales,
-                    timestamp: new Date().toISOString(),
-                    version: '2.0'
-                };
+                // Limpar interface primeiro
+                const grid = document.getElementById('products-grid');
+                const gallery = document.getElementById('product-gallery');
                 
-                // Primary save - complete data
-                localStorage.setItem('kc_store_data', JSON.stringify(dataToSave));
+                if (grid) grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Carregando produtos...</div>';
+                if (gallery) gallery.innerHTML = '<div class="col-span-full text-center py-4 text-gray-500">Carregando...</div>';
                 
-                // Secondary saves - individual arrays
-                localStorage.setItem('kc_products', JSON.stringify(products));
-                localStorage.setItem('kc_sales', JSON.stringify(sales));
-                
-                // Tertiary save - emergency backup
-                localStorage.setItem('kc_backup_' + Date.now(), JSON.stringify(dataToSave));
-                
-                // Immediate verification with multiple checks
-                const primaryCheck = localStorage.getItem('kc_store_data');
-                const secondaryCheck = localStorage.getItem('kc_products');
-                
-                if (primaryCheck && secondaryCheck) {
-                    try {
-                        const parsedPrimary = JSON.parse(primaryCheck);
-                        const parsedSecondary = JSON.parse(secondaryCheck);
+                // Carregar dados do Supabase (fonte principal)
+                if (db.connected) {
+                    console.log('☁️ Carregando produtos do Supabase...');
+                    const supabaseProducts = await db.loadProducts();
+                    
+                    if (supabaseProducts && supabaseProducts.length > 0) {
+                        products = supabaseProducts;
+                        console.log(`✅ ${products.length} produtos carregados do Supabase`);
                         
-                        const primaryValid = parsedPrimary.products && parsedPrimary.products.length === products.length;
-                        const secondaryValid = parsedSecondary.length === products.length;
-                        
-                        if (primaryValid && secondaryValid) {
-                            console.log('✅ Dados salvos e verificados com sucesso!');
-                            console.log(`📊 Verificação: ${parsedPrimary.products.length} produtos salvos`);
-                            
-                            // Clean old backups (keep only last 5)
-                            cleanOldBackups();
-                            
-                            return true;
-                        } else {
-                            console.error('❌ Verificação de integridade falhou');
-                            console.error(`Primary valid: ${primaryValid}, Secondary valid: ${secondaryValid}`);
-                            return false;
-                        }
-                    } catch (parseError) {
-                        console.error('❌ Erro ao verificar dados salvos:', parseError);
-                        return false;
+                        // Salvar no localStorage como backup
+                        saveToLocalStorage();
+                    } else {
+                        console.log('⚠️ Nenhum produto no Supabase, tentando localStorage...');
+                        loadFromLocalStorage();
                     }
                 } else {
-                    console.error('❌ Dados não foram salvos corretamente');
-                    return false;
+                    console.log('⚠️ Supabase desconectado, carregando do localStorage...');
+                    loadFromLocalStorage();
                 }
+                
+                // Renderizar interface
+                renderProducts();
+                updateProductGallery();
+                
+                console.log(`🎉 Sincronização concluída: ${products.length} produtos exibidos`);
                 
             } catch (error) {
-                console.error('❌ Erro crítico no salvamento:', error);
+                console.error('❌ Erro na sincronização:', error);
                 
-                // Emergency save attempt
-                try {
-                    const emergencyData = {
-                        products: products.map(p => ({
-                            id: p.id,
-                            name: p.name,
-                            brand: p.brand,
-                            category: p.category,
-                            price: p.price,
-                            stock: p.stock,
-                            description: p.description || '',
-                            image: p.image || '🌸',
-                            imageUrl: p.imageUrl || null
-                        })),
-                        emergency: true,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    localStorage.setItem('kc_emergency_save', JSON.stringify(emergencyData));
-                    console.log('🆘 Salvamento de emergência realizado');
-                    
-                    alert('⚠️ Salvamento principal falhou, mas backup de emergência foi criado.');
-                    return false;
-                } catch (emergencyError) {
-                    console.error('❌ Falha total no salvamento:', emergencyError);
-                    alert('❌ ERRO CRÍTICO: Não foi possível salvar os dados. Verifique o espaço de armazenamento do navegador.');
-                    return false;
+                // Fallback para localStorage
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+            }
+        }
+
+        // Função simplificada para carregar do localStorage
+        function loadFromLocalStorage() {
+            try {
+                const savedProducts = localStorage.getItem('kc_products');
+                if (savedProducts) {
+                    const parsed = JSON.parse(savedProducts);
+                    if (Array.isArray(parsed)) {
+                        products = parsed;
+                        console.log(`📱 ${products.length} produtos carregados do localStorage`);
+                        return;
+                    }
                 }
+                
+                // Se não encontrou, inicializar vazio
+                products = [];
+                console.log('📱 Inicializando com lista vazia');
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar localStorage:', error);
+                products = [];
+            }
+        }
+
+        // Função simplificada para salvar no localStorage
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('kc_products', JSON.stringify(products));
+                localStorage.setItem('kc_sales', JSON.stringify(sales));
+                console.log(`💾 ${products.length} produtos salvos no localStorage`);
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao salvar no localStorage:', error);
+                return false;
             }
         }
 
@@ -1480,8 +1323,8 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             }
         }
 
-        // Product Management
-        function loadProducts() {
+        // 🎨 RENDERIZAÇÃO DE PRODUTOS (apenas interface)
+        function renderProducts() {
             const grid = document.getElementById('products-grid');
             let filteredProducts = products;
 
@@ -1636,18 +1479,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 product.stock = parseInt(document.getElementById('edit-stock').value);
                 product.description = document.getElementById('edit-description').value;
                 
-                // Save to Supabase
+                // Salvar no Supabase
                 if (db.connected) {
                     await db.saveProduct(product);
                     db.showDBStatus('✅ Produto atualizado!');
                 }
                 
-                // Save to localStorage
-                saveDataToStorage();
-                
-                // Update displays
-                loadProducts();
-                updateProductGallery();
+                // 🎯 SINCRONIZAR: Recarregar dados do banco
+                await loadAndRenderProducts();
                 
                 // Close modal
                 modal.remove();
@@ -1677,13 +1516,13 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         product.imageUrl = e.target.result;
                         
                         // Salvar no banco de dados
-                        if (db.db) {
+                        if (db.connected) {
                             await db.saveProduct(product);
                             await db.saveImage(`product_${product.id}`, e.target.result);
                         }
                         
-                        loadProducts();
-                        updateProductGallery();
+                        // 🎯 SINCRONIZAR: Recarregar dados do banco
+                        await loadAndRenderProducts();
                         alert('✅ Foto do produto atualizada e salva no banco!');
                     };
                     reader.readAsDataURL(file);
@@ -1695,20 +1534,23 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
 
         async function deleteProduct(productId) {
             if (confirm('Tem certeza que deseja excluir este produto?')) {
-                // Remover do array local
-                products = products.filter(p => p.id !== productId);
-                
-                // Remover do banco de dados
-                if (db.db) {
-                    await db.deleteProduct(productId);
-                    await db.deleteImage(`product_${productId}`);
+                try {
+                    // Remover do banco de dados primeiro
+                    if (db.connected) {
+                        await db.deleteProduct(productId);
+                        await db.deleteImage(`product_${productId}`);
+                        console.log('✅ Produto excluído do Supabase');
+                    }
+                    
+                    // 🎯 SINCRONIZAR: Recarregar dados do banco
+                    await loadAndRenderProducts();
+                    
+                    alert('✅ Produto excluído com sucesso!');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao excluir produto:', error);
+                    alert('❌ Erro ao excluir produto. Tente novamente.');
                 }
-                
-                loadProducts();
-                updateProductGallery();
-                updateStockList();
-                updateSalesReport();
-                alert('✅ Produto excluído do banco de dados!');
             }
         }
 
@@ -1722,7 +1564,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             event.target.classList.add('active', 'bg-purple-600', 'text-white');
             event.target.classList.remove('bg-gray-200', 'text-gray-700');
             
-            loadProducts();
+            renderProducts();
         }
 
         function filterProducts(category) {
@@ -1735,7 +1577,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             event.target.classList.add('active', 'bg-indigo-600', 'text-white');
             event.target.classList.remove('bg-gray-200', 'text-gray-700');
             
-            loadProducts();
+            renderProducts();
         }
 
         // Cart Management
@@ -1900,7 +1742,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 cart = [];
                 updateCartDisplay();
                 toggleCart();
-                loadProducts();
+                renderProducts();
                 updateStockList();
                 updateSalesReport();
 
@@ -1933,7 +1775,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
         document.getElementById('add-product-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            console.log('📝 === INICIANDO ADIÇÃO DE PRODUTO ===');
+            console.log('📝 Adicionando novo produto...');
             
             const newProduct = {
                 id: Date.now(),
@@ -1948,112 +1790,40 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 created_at: new Date().toISOString()
             };
 
-            // Validate required fields
+            // Validar campos obrigatórios
             if (!newProduct.name || !newProduct.brand || !newProduct.category || isNaN(newProduct.price) || isNaN(newProduct.stock)) {
                 alert('❌ Por favor, preencha todos os campos obrigatórios!');
                 return;
             }
 
-            console.log('📦 Produto criado:', {
-                id: newProduct.id,
-                name: newProduct.name,
-                brand: newProduct.brand,
-                category: newProduct.category,
-                price: newProduct.price,
-                stock: newProduct.stock
-            });
+            console.log(`📦 Criando produto: ${newProduct.name}`);
 
             try {
-                // STEP 1: Check current state
-                console.log(`📊 Estado ANTES: ${products.length} produtos na memória`);
-                
-                // STEP 2: Add to memory
-                products.push(newProduct);
-                console.log(`📊 Estado DEPOIS: ${products.length} produtos na memória`);
-                console.log('✅ Produto adicionado à memória');
-                
-                // STEP 3: CRITICAL SAVE - Multiple attempts
-                console.log('💾 === INICIANDO SALVAMENTO CRÍTICO ===');
-                
-                let saveAttempts = 0;
-                let saveSuccess = false;
-                
-                while (saveAttempts < 3 && !saveSuccess) {
-                    saveAttempts++;
-                    console.log(`💾 Tentativa de salvamento ${saveAttempts}/3...`);
-                    
-                    saveSuccess = saveDataToStorage();
-                    
-                    if (saveSuccess) {
-                        console.log(`✅ Salvamento bem-sucedido na tentativa ${saveAttempts}`);
-                        break;
-                    } else {
-                        console.error(`❌ Falha na tentativa ${saveAttempts}`);
-                        if (saveAttempts < 3) {
-                            console.log('🔄 Aguardando 1 segundo antes da próxima tentativa...');
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        }
-                    }
-                }
-                
-                if (!saveSuccess) {
-                    console.error('❌ FALHA CRÍTICA: Todas as tentativas de salvamento falharam');
-                    products.pop(); // Remove from memory
-                    alert('❌ ERRO CRÍTICO: Não foi possível salvar o produto após 3 tentativas.\n\nVerifique:\n• Espaço disponível no navegador\n• Se não há outros sites usando muito armazenamento\n• Tente fechar outras abas');
-                    return;
-                }
-                
-                // STEP 4: Verify save immediately
-                console.log('🔍 === VERIFICAÇÃO IMEDIATA ===');
-                const verification = localStorage.getItem('kc_store_data');
-                if (verification) {
-                    try {
-                        const parsed = JSON.parse(verification);
-                        const savedCount = parsed.products ? parsed.products.length : 0;
-                        console.log(`🔍 Verificação: ${savedCount} produtos salvos no localStorage`);
-                        
-                        if (savedCount === products.length) {
-                            console.log('✅ Verificação PASSOU: Dados salvos corretamente');
-                        } else {
-                            console.error(`❌ Verificação FALHOU: Esperado ${products.length}, encontrado ${savedCount}`);
-                        }
-                    } catch (verifyError) {
-                        console.error('❌ Erro na verificação:', verifyError);
-                    }
-                } else {
-                    console.error('❌ Verificação FALHOU: Dados não encontrados no localStorage');
-                }
-                
-                // STEP 5: Try Supabase (optional)
+                // 🎯 PASSO 1: Salvar no Supabase primeiro (fonte principal)
                 if (db.connected) {
-                    try {
-                        console.log('☁️ Tentando salvar no Supabase...');
-                        const supabaseSuccess = await db.saveProduct(newProduct);
-                        
-                        if (supabaseSuccess) {
-                            if (currentProductImage) {
-                                await db.saveImage(`product_${newProduct.id}`, currentProductImage);
-                            }
-                            db.showDBStatus('✅ Produto salvo no Supabase!');
-                            console.log('✅ Produto salvo no Supabase');
-                        } else {
-                            console.warn('⚠️ Falha no Supabase, mas localStorage funcionou');
+                    console.log('☁️ Salvando no Supabase...');
+                    const supabaseSuccess = await db.saveProduct(newProduct);
+                    
+                    if (supabaseSuccess) {
+                        // Salvar imagem se existir
+                        if (currentProductImage) {
+                            await db.saveImage(`product_${newProduct.id}`, currentProductImage);
                         }
-                    } catch (supabaseError) {
-                        console.error('❌ Erro no Supabase:', supabaseError);
-                        console.log('✅ Produto salvo apenas no localStorage');
+                        
+                        console.log('✅ Produto salvo no Supabase');
+                        db.showDBStatus('✅ Dados salvos!', 'bg-green-100 text-green-800');
+                    } else {
+                        throw new Error('Falha ao salvar no Supabase');
                     }
                 } else {
-                    console.log('⚠️ Supabase desconectado, produto salvo no localStorage');
+                    console.log('⚠️ Supabase desconectado, salvando apenas localmente');
                 }
                 
-                // STEP 6: Update interface
-                console.log('🔄 Atualizando interface...');
-                loadProducts();
-                updateProductGallery();
+                // 🎯 PASSO 2: Sincronizar dados (recarregar do banco)
+                console.log('🔄 Sincronizando dados...');
+                await loadAndRenderProducts();
                 
-                // STEP 7: Reset form
-                console.log('🧹 Limpando formulário...');
+                // 🎯 PASSO 3: Limpar formulário
                 this.reset();
                 currentProductImage = null;
                 
@@ -2069,41 +1839,12 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     imageInput.value = '';
                 }
                 
-                // STEP 8: Final verification
-                console.log('🏁 === VERIFICAÇÃO FINAL ===');
-                setTimeout(() => {
-                    const finalCheck = localStorage.getItem('kc_store_data');
-                    if (finalCheck) {
-                        try {
-                            const parsed = JSON.parse(finalCheck);
-                            const finalCount = parsed.products ? parsed.products.length : 0;
-                            console.log(`🏁 Verificação final: ${finalCount} produtos persistidos`);
-                            
-                            if (finalCount === products.length) {
-                                console.log('🎉 SUCESSO TOTAL: Produto salvo e persistido com sucesso!');
-                            } else {
-                                console.error('❌ PROBLEMA: Dados podem não ter sido persistidos corretamente');
-                            }
-                        } catch (finalError) {
-                            console.error('❌ Erro na verificação final:', finalError);
-                        }
-                    }
-                }, 2000);
-                
-                console.log('✅ === PRODUTO ADICIONADO COM SUCESSO ===');
-                alert(`✅ Produto "${newProduct.name}" adicionado com sucesso!\n\n💾 Dados salvos e verificados\n📊 Total de produtos: ${products.length}\n\n🔄 Atualize a página para confirmar que o produto foi salvo permanentemente!`);
+                console.log(`✅ ${products.length} produtos salvos com sucesso!`);
+                alert(`✅ Produto "${newProduct.name}" adicionado com sucesso!\n\n📊 Total de produtos: ${products.length}`);
                 
             } catch (error) {
-                console.error('❌ === ERRO CRÍTICO ===', error);
-                
-                // Remove from memory if save failed
-                const index = products.findIndex(p => p.id === newProduct.id);
-                if (index > -1) {
-                    products.splice(index, 1);
-                    console.log('🔄 Produto removido da memória devido ao erro');
-                }
-                
-                alert(`❌ ERRO CRÍTICO ao salvar produto!\n\nDetalhes do erro:\n${error.message}\n\nVerifique o console (F12) para mais informações.`);
+                console.error('❌ Erro ao salvar produto:', error);
+                alert(`❌ Erro ao salvar produto: ${error.message}\n\nTente novamente ou verifique sua conexão.`);
             }
         });
 
@@ -2123,5 +1864,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3dbde61807a84',t:'MTc1NTA0MjQ1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3e7e23051f18d',t:'MTc1NTA0Mjk0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
