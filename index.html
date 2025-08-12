@@ -36,8 +36,8 @@
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-3">
-                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden" id="logo-container">
-                        <img id="logo-image" src="" alt="KC Perfumaria" class="w-full h-full object-cover rounded-lg hidden" onerror="console.error('Erro ao carregar logo no header'); this.style.display='none'; this.classList.add('hidden'); document.getElementById('logo-text').classList.remove('hidden');">
+                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer" id="logo-container" onclick="changeLogo()">
+                        <img id="logo-image" class="w-full h-full object-cover hidden" alt="KC Perfumaria">
                         <span id="logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
                     </div>
                     <div>
@@ -231,9 +231,11 @@
         window.filterByBrand = filterByBrand;
         window.filterProducts = filterProducts;
         window.backToStore = backToStore;
+        window.editProduct = editProduct;
         window.editProductImage = editProductImage;
         window.deleteProduct = deleteProduct;
         window.removeProductImage = removeProductImage;
+        window.changeLogo = changeLogo;
 
         // Database connection
         let supabaseClient = null;
@@ -1056,8 +1058,54 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             imageInput.value = '';
         }
 
-        // Logo Management - Simplified (no admin logo changes)
-        // Logo stays as default KC text
+        // Logo Management
+        function changeLogo() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        const logoImage = document.getElementById('logo-image');
+                        const logoText = document.getElementById('logo-text');
+                        
+                        logoImage.src = e.target.result;
+                        logoImage.classList.remove('hidden');
+                        logoText.classList.add('hidden');
+                        
+                        // Salvar no banco de dados
+                        if (db.connected) {
+                            await db.saveImage('logo', e.target.result);
+                            db.showDBStatus('✅ Logo salva!');
+                        }
+                        
+                        alert('✅ Logo atualizada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function updateLogo(logoData) {
+            const logoImage = document.getElementById('logo-image');
+            const logoText = document.getElementById('logo-text');
+            
+            if (logoData) {
+                logoImage.src = logoData;
+                logoImage.classList.remove('hidden');
+                logoText.classList.add('hidden');
+            }
+        }
 
         // Product Management
         function loadProducts() {
@@ -1134,7 +1182,10 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         <div class="text-xs text-purple-600 font-medium mb-1">${brandNames[product.brand]}</div>
                         <h4 class="font-semibold text-sm mb-1">${product.name}</h4>
                         <p class="text-xs text-gray-600 mb-2">R$ ${product.price.toFixed(2)}</p>
-                        <div class="flex space-x-2">
+                        <div class="flex space-x-1">
+                            <button onclick="editProduct(${product.id})" class="flex-1 bg-green-100 text-green-600 text-xs py-1 px-2 rounded hover:bg-green-200 transition-all">
+                                ✏️ Editar
+                            </button>
                             <button onclick="editProductImage(${product.id})" class="flex-1 bg-blue-100 text-blue-600 text-xs py-1 px-2 rounded hover:bg-blue-200 transition-all">
                                 📷 Foto
                             </button>
@@ -1145,6 +1196,91 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function editProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const brandNames = {
+                'boticario': '🌿 Boticário',
+                'mary-kay': '💎 Mary Kay',
+                'eudora': '✨ Eudora',
+                'natura': '🍃 Natura'
+            };
+
+            // Create edit modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-md w-full p-6">
+                    <h3 class="text-lg font-bold mb-4">✏️ Editar Produto</h3>
+                    <form id="edit-product-form">
+                        <input type="text" id="edit-name" value="${product.name}" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <select id="edit-brand" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="boticario" ${product.brand === 'boticario' ? 'selected' : ''}>🌿 Boticário</option>
+                            <option value="mary-kay" ${product.brand === 'mary-kay' ? 'selected' : ''}>💎 Mary Kay</option>
+                            <option value="eudora" ${product.brand === 'eudora' ? 'selected' : ''}>✨ Eudora</option>
+                            <option value="natura" ${product.brand === 'natura' ? 'selected' : ''}>🍃 Natura</option>
+                        </select>
+                        
+                        <select id="edit-category" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="perfumes" ${product.category === 'perfumes' ? 'selected' : ''}>Perfumes</option>
+                            <option value="cosmeticos" ${product.category === 'cosmeticos' ? 'selected' : ''}>Cosméticos</option>
+                            <option value="cuidados" ${product.category === 'cuidados' ? 'selected' : ''}>Cuidados</option>
+                        </select>
+                        
+                        <input type="number" id="edit-price" value="${product.price}" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <input type="number" id="edit-stock" value="${product.stock}" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <textarea id="edit-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-20 focus:ring-2 focus:ring-purple-500">${product.description}</textarea>
+                        
+                        <div class="flex space-x-2">
+                            <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                ✅ Salvar
+                            </button>
+                            <button type="button" onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Handle form submission
+            document.getElementById('edit-product-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Update product data
+                product.name = document.getElementById('edit-name').value;
+                product.brand = document.getElementById('edit-brand').value;
+                product.category = document.getElementById('edit-category').value;
+                product.price = parseFloat(document.getElementById('edit-price').value);
+                product.stock = parseInt(document.getElementById('edit-stock').value);
+                product.description = document.getElementById('edit-description').value;
+                
+                // Save to Supabase
+                if (db.connected) {
+                    await db.saveProduct(product);
+                    db.showDBStatus('✅ Produto atualizado!');
+                }
+                
+                // Save to localStorage
+                saveDataToStorage();
+                
+                // Update displays
+                loadProducts();
+                updateProductGallery();
+                
+                // Close modal
+                modal.remove();
+                
+                alert('✅ Produto atualizado com sucesso!');
+            });
         }
 
         async function editProductImage(productId) {
@@ -1332,39 +1468,16 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
 
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
-            let message = `🛍️ *PEDIDO KC PERFUMARIA* 💜\n`;
-            message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-            message += `📅 *Data:* ${new Date().toLocaleDateString('pt-BR')}\n`;
-            message += `🆔 *Pedido:* #${Date.now()}\n\n`;
+            let message = `🛍️ *PEDIDO KC PERFUMARIA* 💜\n\n`;
             
-            message += `📦 *PRODUTOS SELECIONADOS:*\n`;
-            message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            
+            message += `📦 *PRODUTOS:*\n`;
             cart.forEach((item, index) => {
-                message += `${index + 1}. *${item.name}*\n`;
-                message += `   Qtd: ${item.quantity}x | Valor: R$ ${(item.price * item.quantity).toFixed(2)}\n\n`;
+                message += `${index + 1}. ${item.name}\n`;
+                message += `   Qtd: ${item.quantity}x - R$ ${(item.price * item.quantity).toFixed(2)}\n\n`;
             });
             
-            message += `💰 *TOTAL: R$ ${total.toFixed(2)}* ✨\n\n`;
-            
-            message += `💳 *FORMAS DE PAGAMENTO DISPONÍVEIS:*\n`;
-            message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            message += `📱 PIX: R$ ${(total * 0.95).toFixed(2)} (5% desconto)\n`;
-            message += `💳 Cartão Débito: R$ ${(total * 0.98).toFixed(2)} (2% desconto)\n`;
-            message += `💰 Dinheiro: R$ ${(total * 0.97).toFixed(2)} (3% desconto)\n`;
-            message += `💳 Cartão Crédito: R$ ${total.toFixed(2)} (até 3x sem juros)\n\n`;
-            
-            message += `📍 *DADOS PARA ENTREGA:*\n`;
-            message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            message += `👤 Nome completo: _______________\n`;
-            message += `📍 Endereço completo: ___________\n`;
-            message += `📱 Telefone: ____________________\n`;
-            message += `💳 Forma de pagamento preferida: ____\n`;
-            message += `📝 Observações: _________________\n\n`;
-            
-            message += `🌟 Olá! Acabei de finalizar meu pedido na KC Perfumaria! 💜\n\n`;
-            message += `Podemos combinar a entrega e forma de pagamento? Estou ansiosa para receber! 😊\n\n`;
-            message += `Muito obrigada! 🙏✨`;
+            message += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n\n`;
+            message += `Olá! Gostaria de fazer este pedido. Podemos combinar a entrega? 😊`;
 
             try {
                 // Update stock
@@ -1514,5 +1627,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e13d8671b5f18d',t:'MTc1NTAxNTAwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e32542c00636ec',t:'MTc1NTAzNDk3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
