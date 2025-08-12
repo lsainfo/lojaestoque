@@ -118,6 +118,36 @@
                     </button>
                 </div>
                 
+                <!-- Logo Management -->
+                <div class="max-w-2xl mx-auto mb-8">
+                    <h3 class="text-lg font-semibold mb-4">🖼️ Gerenciar Logo da Loja</h3>
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <div class="flex items-center space-x-6">
+                            <div class="flex-shrink-0">
+                                <div class="w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                                    <img id="admin-logo-image" class="w-full h-full object-cover hidden" alt="Logo atual">
+                                    <span id="admin-logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-gray-800 mb-2">Logo Atual</h4>
+                                <p class="text-gray-600 text-sm mb-4">Clique no botão abaixo para alterar a logo da sua loja. Recomendamos imagens quadradas ou retangulares.</p>
+                                <div class="flex space-x-3">
+                                    <button onclick="changeLogoAdmin()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                        📷 Alterar Logo
+                                    </button>
+                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all">
+                                        🗑️ Remover Logo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            💡 Dica: Use imagens PNG ou JPG com fundo transparente para melhor resultado. Tamanho máximo: 2MB.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Add Product Form -->
                 <div class="max-w-2xl mx-auto">
                     <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
@@ -236,6 +266,8 @@
         window.deleteProduct = deleteProduct;
         window.removeProductImage = removeProductImage;
         window.changeLogo = changeLogo;
+        window.changeLogoAdmin = changeLogoAdmin;
+        window.removeLogoAdmin = removeLogoAdmin;
 
         // Database connection
         let supabaseClient = null;
@@ -473,7 +505,7 @@
         function accessAdmin() {
             const password = prompt('🔐 Digite a senha de administrador:');
             
-            if (password === 'kc2024' || password === 'kelly' || password === 'admin') {
+            if (password === 'kc0310') {
                 // Switch to admin view
                 const customerView = document.getElementById('customer-view');
                 const adminPanel = document.getElementById('admin-panel');
@@ -501,9 +533,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const adminParam = urlParams.get('admin');
             
-            if (adminParam === 'kc2024' || adminParam === 'kelly' || adminParam === 'admin') {
+            if (adminParam === 'kc0310') {
                 // Store admin access in session
-                sessionStorage.setItem('kc_admin_access', 'true');
+                sessionStorage.setItem('kc_admin_access', 'kc0310');
                 
                 // Automatically switch to admin view
                 setTimeout(() => {
@@ -883,12 +915,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 
                 console.log('🎉 KC Perfumaria inicializada com sucesso!');
                 
-                // Show success message
-                if (dbConnected) {
-                    setTimeout(() => {
-                        alert('🎉 PARABÉNS!\n\n✅ Sua KC Perfumaria está conectada ao Supabase!\n\n🚀 Recursos ativados:\n• 💾 Banco de dados na nuvem\n• 📷 Upload de imagens\n• 📊 Relatórios em tempo real\n• 🔄 Sincronização automática\n\nSua loja está 100% funcional!');
-                    }, 2000);
-                }
+                // Success message removed - site loads silently
                 
             } catch (error) {
                 console.error('❌ Erro ao inicializar aplicação:', error);
@@ -923,7 +950,16 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 const logoData = await db.getImage('logo');
                 if (logoData) {
                     updateLogo(logoData);
+                    updateAdminLogoPreview(logoData);
                     console.log('🖼️ Logo carregada do Supabase');
+                } else {
+                    // Try localStorage fallback
+                    const localLogo = localStorage.getItem('kc_logo');
+                    if (localLogo) {
+                        updateLogo(localLogo);
+                        updateAdminLogoPreview(localLogo);
+                        console.log('🖼️ Logo carregada do localStorage');
+                    }
                 }
                 
             } catch (error) {
@@ -946,6 +982,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 const savedSales = localStorage.getItem('kc_sales');
                 if (savedSales) {
                     sales = JSON.parse(savedSales);
+                }
+                
+                // Load logo from localStorage
+                const localLogo = localStorage.getItem('kc_logo');
+                if (localLogo) {
+                    updateLogo(localLogo);
+                    updateAdminLogoPreview(localLogo);
+                    console.log('🖼️ Logo carregada do localStorage');
                 }
                 
                 // Se não há produtos, criar dados iniciais
@@ -1096,6 +1140,99 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             fileInput.click();
         }
 
+        // Admin Logo Management Functions
+        function changeLogoAdmin() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
+
+                    if (!file.type.startsWith('image/')) {
+                        alert('❌ Por favor, selecione apenas arquivos de imagem (PNG, JPG, GIF).');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        const logoData = e.target.result;
+                        
+                        // Update header logo
+                        updateLogo(logoData);
+                        
+                        // Update admin preview
+                        updateAdminLogoPreview(logoData);
+                        
+                        // Save to database
+                        if (db.connected) {
+                            try {
+                                await db.saveImage('logo', logoData);
+                                db.showDBStatus('✅ Logo salva no banco!');
+                                console.log('✅ Logo salva no Supabase');
+                            } catch (error) {
+                                console.error('❌ Erro ao salvar logo:', error);
+                            }
+                        }
+                        
+                        // Save to localStorage as fallback
+                        try {
+                            localStorage.setItem('kc_logo', logoData);
+                        } catch (error) {
+                            console.error('❌ Erro ao salvar logo no localStorage:', error);
+                        }
+                        
+                        alert('✅ Logo atualizada com sucesso!\n\n🔄 A nova logo já está visível no cabeçalho da loja.');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function removeLogoAdmin() {
+            if (confirm('🗑️ Tem certeza que deseja remover a logo?\n\nA logo padrão "KC" será exibida.')) {
+                // Remove from header
+                const logoImage = document.getElementById('logo-image');
+                const logoText = document.getElementById('logo-text');
+                
+                logoImage.classList.add('hidden');
+                logoText.classList.remove('hidden');
+                
+                // Remove from admin preview
+                const adminLogoImage = document.getElementById('admin-logo-image');
+                const adminLogoText = document.getElementById('admin-logo-text');
+                
+                adminLogoImage.classList.add('hidden');
+                adminLogoText.classList.remove('hidden');
+                
+                // Remove from database
+                if (db.connected) {
+                    db.deleteImage('logo').then(() => {
+                        db.showDBStatus('✅ Logo removida do banco!');
+                        console.log('✅ Logo removida do Supabase');
+                    }).catch(error => {
+                        console.error('❌ Erro ao remover logo:', error);
+                    });
+                }
+                
+                // Remove from localStorage
+                try {
+                    localStorage.removeItem('kc_logo');
+                } catch (error) {
+                    console.error('❌ Erro ao remover logo do localStorage:', error);
+                }
+                
+                alert('✅ Logo removida com sucesso!\n\n🔄 A logo padrão "KC" está sendo exibida.');
+            }
+        }
+
         function updateLogo(logoData) {
             const logoImage = document.getElementById('logo-image');
             const logoText = document.getElementById('logo-text');
@@ -1104,6 +1241,23 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 logoImage.src = logoData;
                 logoImage.classList.remove('hidden');
                 logoText.classList.add('hidden');
+            } else {
+                logoImage.classList.add('hidden');
+                logoText.classList.remove('hidden');
+            }
+        }
+
+        function updateAdminLogoPreview(logoData) {
+            const adminLogoImage = document.getElementById('admin-logo-image');
+            const adminLogoText = document.getElementById('admin-logo-text');
+            
+            if (logoData) {
+                adminLogoImage.src = logoData;
+                adminLogoImage.classList.remove('hidden');
+                adminLogoText.classList.add('hidden');
+            } else {
+                adminLogoImage.classList.add('hidden');
+                adminLogoText.classList.remove('hidden');
             }
         }
 
@@ -1536,7 +1690,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 
             } catch (error) {
                 console.error('❌ Erro ao processar venda:', error);
-                alert('⚠️ Erro ao processar venda. Tente novamente.');
+                // Error message removed - process continues silently
             }
         }
 
@@ -1627,5 +1781,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e32542c00636ec',t:'MTc1NTAzNDk3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3a9b516556eb1',t:'MTc1NTA0MDQwMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
