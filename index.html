@@ -49,6 +49,9 @@
                     <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
                         🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
                     </button>
+                    <button onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                        ⚙️ <span class="hidden sm:inline">Admin</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -115,175 +118,58 @@
                     </button>
                 </div>
                 
-                <!-- Status da Loja -->
-                <div class="mb-6 p-4 bg-green-50 rounded-lg">
-                    <h3 class="text-lg font-semibold mb-2 text-green-800">Status da Loja</h3>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-green-600">✅ Loja funcionando perfeitamente!</p>
-                            <p class="text-xs text-green-500 mt-1">Dados salvos localmente - Pronta para Supabase</p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button onclick="exportData()" class="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-200 transition-all">
-                                📤 Exportar Dados
-                            </button>
-                            <button onclick="importData()" class="bg-green-100 text-green-600 px-3 py-1 rounded text-sm hover:bg-green-200 transition-all">
-                                📥 Importar Dados
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Status Supabase -->
-                <div class="mb-6 p-4 bg-green-50 rounded-lg">
-                    <h3 class="text-lg font-semibold mb-4 text-green-800">🎉 Conectado ao Supabase!</h3>
-                    
-                    <div class="mb-4 p-3 bg-white rounded-lg border border-green-200">
-                        <p class="text-sm text-green-600 mb-2">
-                            <strong>✅ Status:</strong> Sua loja está conectada ao banco de dados na nuvem!
-                        </p>
-                        <p class="text-xs text-green-500">
-                            Todos os dados são salvos automaticamente no Supabase.
-                        </p>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-green-100 p-2 rounded">
-                            <strong>💾 Produtos:</strong> Salvos na nuvem
-                        </div>
-                        <div class="bg-green-100 p-2 rounded">
-                            <strong>💰 Vendas:</strong> Registradas online
-                        </div>
-                        <div class="bg-green-100 p-2 rounded">
-                            <strong>📷 Imagens:</strong> Hospedadas seguramente
-                        </div>
-                        <div class="bg-green-100 p-2 rounded">
-                            <strong>🔄 Sync:</strong> Automático
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Store Settings Section -->
-                <div class="mb-6 p-4 bg-purple-50 rounded-lg">
-                    <h3 class="text-lg font-semibold mb-4 text-purple-800">Configurações da Loja</h3>
-                    
-                    <!-- Logo Upload -->
-                    <div class="mb-6">
-                        <h4 class="font-medium text-gray-700 mb-3">Logo da Loja</h4>
-                        <div class="flex items-center space-x-4">
-                            <div class="w-16 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-purple-200">
-                                <img id="admin-logo-preview" src="" alt="Logo Preview" class="w-full h-full object-cover rounded-lg hidden" onerror="console.error('Erro ao carregar logo no admin'); this.style.display='none'; this.classList.add('hidden'); document.getElementById('admin-logo-text').classList.remove('hidden');">
-                                <span id="admin-logo-text" class="text-purple-600 font-bold text-xl">KC</span>
-                            </div>
-                            <div class="flex-1">
-                                <input type="file" id="logo-upload" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <p class="text-xs text-gray-500 mt-1">Formatos aceitos: JPG, PNG, GIF (máx. 2MB)</p>
-                            </div>
-                            <button onclick="removeLogo()" class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all">
-                                Remover Logo
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 space-y-2">
-                        <button onclick="saveSettings()" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-all font-semibold">
-                            💾 Salvar Logo
-                        </button>
-                        <button onclick="testLogoSave()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all font-medium text-sm">
-                            🔍 Testar Salvamento da Logo
-                        </button>
-                    </div>
-                </div>
-                
                 <!-- Add Product Form -->
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
-                        <form id="add-product-form" class="space-y-4">
-                            <!-- Product Image Upload -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
-                                <div class="image-upload-area" id="product-image-upload" onclick="document.getElementById('product-image-input').click()">
-                                    <div id="image-preview-container" class="hidden">
-                                        <img id="image-preview" class="w-full h-32 object-cover rounded-lg mb-2" alt="Preview">
-                                        <button type="button" onclick="removeProductImage(event)" class="text-red-600 hover:text-red-800 text-sm">
-                                            🗑️ Remover Foto
-                                        </button>
-                                    </div>
-                                    <div id="upload-placeholder">
-                                        <div class="text-4xl mb-2">📷</div>
-                                        <p class="text-gray-600 font-medium">Clique para adicionar foto</p>
-                                        <p class="text-gray-400 text-sm mt-1">JPG, PNG ou GIF (máx. 5MB)</p>
-                                    </div>
+                <div class="max-w-2xl mx-auto">
+                    <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
+                    <form id="add-product-form" class="space-y-4">
+                        <!-- Product Image Upload -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
+                            <div class="image-upload-area" id="product-image-upload" onclick="document.getElementById('product-image-input').click()">
+                                <div id="image-preview-container" class="hidden">
+                                    <img id="image-preview" class="w-full h-32 object-cover rounded-lg mb-2" alt="Preview">
+                                    <button type="button" onclick="removeProductImage(event)" class="text-red-600 hover:text-red-800 text-sm">
+                                        🗑️ Remover Foto
+                                    </button>
                                 </div>
-                                <input type="file" id="product-image-input" accept="image/*" class="hidden">
+                                <div id="upload-placeholder">
+                                    <div class="text-4xl mb-2">📷</div>
+                                    <p class="text-gray-600 font-medium">Clique para adicionar foto</p>
+                                    <p class="text-gray-400 text-sm mt-1">JPG, PNG ou GIF (máx. 5MB)</p>
+                                </div>
                             </div>
-
-                            <input type="text" id="product-name" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                            <select id="product-brand" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                                <option value="">Selecione a marca</option>
-                                <option value="boticario">🌿 Boticário</option>
-                                <option value="mary-kay">💎 Mary Kay</option>
-                                <option value="eudora">✨ Eudora</option>
-                                <option value="natura">🍃 Natura</option>
-                            </select>
-                            <select id="product-category" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                                <option value="">Selecione a categoria</option>
-                                <option value="perfumes">Perfumes</option>
-                                <option value="cosmeticos">Cosméticos</option>
-                                <option value="cuidados">Cuidados</option>
-                            </select>
-                            <input type="number" id="product-price" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                            <input type="number" id="product-stock" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                            <textarea id="product-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24"></textarea>
-                            <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-all font-semibold">
-                                Adicionar Produto
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Stock Management -->
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Gerenciar Estoque</h3>
-                        <div class="space-y-3 max-h-96 overflow-y-auto" id="stock-list">
-                            <!-- Stock items will be loaded here -->
+                            <input type="file" id="product-image-input" accept="image/*" class="hidden">
                         </div>
-                    </div>
+
+                        <input type="text" id="product-name" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <select id="product-brand" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                            <option value="">Selecione a marca</option>
+                            <option value="boticario">🌿 Boticário</option>
+                            <option value="mary-kay">💎 Mary Kay</option>
+                            <option value="eudora">✨ Eudora</option>
+                            <option value="natura">🍃 Natura</option>
+                        </select>
+                        <select id="product-category" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                            <option value="">Selecione a categoria</option>
+                            <option value="perfumes">Perfumes</option>
+                            <option value="cosmeticos">Cosméticos</option>
+                            <option value="cuidados">Cuidados</option>
+                        </select>
+                        <input type="number" id="product-price" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <input type="number" id="product-stock" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <textarea id="product-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24"></textarea>
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-all font-semibold">
+                            Adicionar Produto
+                        </button>
+                    </form>
                 </div>
             </div>
 
             <!-- Product Gallery Management -->
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h3 class="text-lg font-semibold mb-4">Galeria de Produtos</h3>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Produtos Cadastrados</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="product-gallery">
                     <!-- Product gallery will be loaded here -->
-                </div>
-            </div>
-
-            <!-- Sales Report -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">Relatório de Vendas</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-green-800">Total de Vendas</h4>
-                        <p class="text-2xl font-bold text-green-600" id="total-sales">R$ 0,00</p>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-blue-800">Produtos Vendidos</h4>
-                        <p class="text-2xl font-bold text-blue-600" id="products-sold">0</p>
-                    </div>
-                    <div class="bg-purple-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-purple-800">Produtos em Estoque</h4>
-                        <p class="text-2xl font-bold text-purple-600" id="total-stock">0</p>
-                    </div>
-                </div>
-                
-                <!-- Sales History -->
-                <div class="mt-6">
-                    <h4 class="font-semibold mb-3">Histórico de Vendas</h4>
-                    <div class="max-h-64 overflow-y-auto" id="sales-history">
-                        <!-- Sales history will be loaded here -->
-                    </div>
                 </div>
             </div>
         </div>
@@ -334,6 +220,20 @@
         let currentFilter = 'todos';
         let currentBrand = 'todas';
         let currentProductImage = null;
+
+        // Make functions globally accessible
+        window.accessAdmin = accessAdmin;
+        window.toggleCart = toggleCart;
+        window.addToCart = addToCart;
+        window.removeFromCart = removeFromCart;
+        window.updateQuantity = updateQuantity;
+        window.finalizePurchaseWhatsApp = finalizePurchaseWhatsApp;
+        window.filterByBrand = filterByBrand;
+        window.filterProducts = filterProducts;
+        window.backToStore = backToStore;
+        window.editProductImage = editProductImage;
+        window.deleteProduct = deleteProduct;
+        window.removeProductImage = removeProductImage;
 
         // Database connection
         let supabaseClient = null;
@@ -566,6 +466,33 @@
                 minAmountPerInstallment: 30.00
             }
         };
+
+        // Admin access function
+        function accessAdmin() {
+            const password = prompt('🔐 Digite a senha de administrador:');
+            
+            if (password === 'kc2024' || password === 'kelly' || password === 'admin') {
+                // Switch to admin view
+                const customerView = document.getElementById('customer-view');
+                const adminPanel = document.getElementById('admin-panel');
+                
+                if (customerView && adminPanel) {
+                    customerView.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    adminPanel.classList.remove('admin-panel');
+                    updateProductGallery();
+                }
+                
+                alert('🎉 Acesso administrativo concedido!');
+                console.log('🔑 Acesso administrativo concedido!');
+                return true;
+            } else if (password !== null) {
+                alert('❌ Senha incorreta! Acesso negado.');
+                return false;
+            }
+            
+            return false;
+        }
 
         // Check for admin access
         function checkAdminAccess() {
@@ -948,11 +875,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 }
                 
                 // Initialize interface
-                await loadProducts();
-                updateStockList();
-                updateSalesReport();
-                setupLogoUpload();
-                await loadSavedLogo();
+                loadProducts();
                 setupProductImageUpload();
                 updateProductGallery();
                 
@@ -1046,137 +969,15 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             }
         }
 
-        // Initialize default data for Supabase
+        // Initialize with empty data - admin will add products
         async function initializeDefaultDataSupabase() {
-            const defaultProducts = [
-                {
-                    id: Date.now() + 1,
-                    name: "Malbec Black",
-                    brand: "boticario",
-                    category: "perfumes",
-                    price: 89.90,
-                    stock: 15,
-                    description: "Perfume masculino amadeirado e intenso",
-                    image: "🍷",
-                    image_url: null
-                },
-                {
-                    id: Date.now() + 2,
-                    name: "Lily Eau de Parfum",
-                    brand: "boticario",
-                    category: "perfumes",
-                    price: 119.90,
-                    stock: 8,
-                    description: "Perfume feminino floral e elegante",
-                    image: "🌸",
-                    image_url: null
-                },
-                {
-                    id: Date.now() + 3,
-                    name: "Base Líquida HD",
-                    brand: "boticario",
-                    category: "cosmeticos",
-                    price: 45.90,
-                    stock: 12,
-                    description: "Base de alta cobertura e longa duração",
-                    image: "💄",
-                    image_url: null
-                },
-                {
-                    id: Date.now() + 4,
-                    name: "Creme Hidratante Corporal",
-                    brand: "boticario",
-                    category: "cuidados",
-                    price: 29.90,
-                    stock: 20,
-                    description: "Hidratação intensa para o corpo",
-                    image: "🧴",
-                    image_url: null
-                },
-                {
-                    id: Date.now() + 5,
-                    name: "TimeWise Miracle Set",
-                    brand: "mary-kay",
-                    category: "cuidados",
-                    price: 189.90,
-                    stock: 6,
-                    description: "Kit completo anti-idade",
-                    image: "✨",
-                    image_url: null
-                }
-            ];
-
-            console.log('📦 Criando produtos iniciais no Supabase...');
-            
-            for (const product of defaultProducts) {
-                await db.saveProduct(product);
-            }
-            
-            products = defaultProducts;
-            console.log('✅ Produtos iniciais criados no Supabase!');
+            products = [];
+            console.log('✅ Loja inicializada vazia - pronta para cadastro de produtos!');
         }
 
         // Initialize default data (localStorage fallback)
         function initializeDefaultData() {
-            const defaultProducts = [
-                {
-                    id: 1,
-                    name: "Malbec Black",
-                    brand: "boticario",
-                    category: "perfumes",
-                    price: 89.90,
-                    stock: 15,
-                    description: "Perfume masculino amadeirado e intenso",
-                    image: "🍷",
-                    imageUrl: null
-                },
-                {
-                    id: 2,
-                    name: "Lily Eau de Parfum",
-                    brand: "boticario",
-                    category: "perfumes",
-                    price: 119.90,
-                    stock: 8,
-                    description: "Perfume feminino floral e elegante",
-                    image: "🌸",
-                    imageUrl: null
-                },
-                {
-                    id: 3,
-                    name: "Base Líquida HD",
-                    brand: "boticario",
-                    category: "cosmeticos",
-                    price: 45.90,
-                    stock: 12,
-                    description: "Base de alta cobertura e longa duração",
-                    image: "💄",
-                    imageUrl: null
-                },
-                {
-                    id: 4,
-                    name: "Creme Hidratante Corporal",
-                    brand: "boticario",
-                    category: "cuidados",
-                    price: 29.90,
-                    stock: 20,
-                    description: "Hidratação intensa para o corpo",
-                    image: "🧴",
-                    imageUrl: null
-                },
-                {
-                    id: 5,
-                    name: "TimeWise Miracle Set",
-                    brand: "mary-kay",
-                    category: "cuidados",
-                    price: 189.90,
-                    stock: 6,
-                    description: "Kit completo anti-idade",
-                    image: "✨",
-                    imageUrl: null
-                }
-            ];
-
-            products = defaultProducts;
+            products = [];
             saveDataToStorage();
         }
 
@@ -1255,347 +1056,8 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             imageInput.value = '';
         }
 
-        // Logo Management
-        function setupLogoUpload() {
-            const logoUpload = document.getElementById('logo-upload');
-            logoUpload.addEventListener('change', async function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 2 * 1024 * 1024) {
-                        alert('Arquivo muito grande! O tamanho máximo é 2MB.');
-                        return;
-                    }
-
-                    if (!file.type.startsWith('image/')) {
-                        alert('Por favor, selecione apenas arquivos de imagem.');
-                        return;
-                    }
-
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        const logoData = e.target.result;
-                        console.log('📷 Logo carregada, tamanho:', logoData.length);
-                        
-                        // Verificar se os dados da imagem são válidos
-                        if (!logoData || logoData === 'data:,' || logoData.length < 100) {
-                            console.error('❌ Dados da imagem inválidos:', logoData);
-                            alert('❌ Erro ao carregar a imagem. Tente outro arquivo.');
-                            return;
-                        }
-                        
-                        // Atualizar preview imediatamente
-                        updateLogo(logoData);
-                        
-                        // Salvar no localStorage como backup
-                        try {
-                            localStorage.setItem('kc_perfumaria_logo', logoData);
-                            console.log('✅ Logo salva no localStorage!');
-                        } catch (error) {
-                            console.error('❌ Erro ao salvar no localStorage:', error);
-                        }
-                        
-                        // Salvar no banco de dados
-                        if (db.connected) {
-                            try {
-                                console.log('💾 Salvando logo no banco de dados...');
-                                const success = await db.saveImage('logo', logoData);
-                                
-                                if (success) {
-                                    console.log('✅ Logo salva no banco de dados!');
-                                    db.showDBStatus('✅ Logo salva no Supabase!');
-                                    
-                                    // Verificar se foi salva corretamente
-                                    setTimeout(async () => {
-                                        const savedLogo = await db.getImage('logo');
-                                        if (savedLogo && savedLogo === logoData) {
-                                            console.log('✅ Verificação: Logo confirmada no banco!');
-                                            alert('✅ Logo salva com sucesso!\n\n🔍 Status:\n• ✅ Salva no Supabase\n• ✅ Backup no navegador\n• ✅ Exibindo corretamente');
-                                        } else {
-                                            console.error('❌ Verificação falhou!');
-                                            alert('⚠️ Logo salva mas verificação falhou.\nA logo está sendo exibida mas pode não persistir.');
-                                        }
-                                    }, 500);
-                                } else {
-                                    throw new Error('Falha ao salvar no banco');
-                                }
-                                
-                            } catch (error) {
-                                console.error('❌ Erro ao salvar logo no banco:', error);
-                                alert('⚠️ Logo salva localmente mas erro no banco:\n' + error.message + '\n\nA logo será exibida mas pode não persistir entre sessões.');
-                            }
-                        } else {
-                            alert('⚠️ Banco de dados não conectado!\nLogo salva localmente apenas.');
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-
-        function updateLogo(logoData) {
-            console.log('🖼️ Atualizando logo na interface...');
-            
-            // Verificar se os dados são válidos
-            if (!logoData || logoData === 'data:,' || logoData.length < 100) {
-                console.error('❌ Dados da logo inválidos para atualização:', logoData);
-                return;
-            }
-            
-            // Atualizar logo no header
-            const headerLogoImg = document.getElementById('logo-image');
-            const headerLogoText = document.getElementById('logo-text');
-            
-            if (headerLogoImg && headerLogoText) {
-                headerLogoImg.onload = function() {
-                    console.log('✅ Logo do header carregada com sucesso!');
-                    headerLogoImg.classList.remove('hidden');
-                    headerLogoText.classList.add('hidden');
-                };
-                
-                headerLogoImg.onerror = function() {
-                    console.error('❌ Erro ao carregar logo no header');
-                    headerLogoImg.classList.add('hidden');
-                    headerLogoText.classList.remove('hidden');
-                };
-                
-                headerLogoImg.src = logoData;
-            }
-
-            // Atualizar logo no admin
-            const adminLogoImg = document.getElementById('admin-logo-preview');
-            const adminLogoText = document.getElementById('admin-logo-text');
-            
-            if (adminLogoImg && adminLogoText) {
-                adminLogoImg.onload = function() {
-                    console.log('✅ Logo do admin carregada com sucesso!');
-                    adminLogoImg.classList.remove('hidden');
-                    adminLogoText.classList.add('hidden');
-                };
-                
-                adminLogoImg.onerror = function() {
-                    console.error('❌ Erro ao carregar logo no admin');
-                    adminLogoImg.classList.add('hidden');
-                    adminLogoText.classList.remove('hidden');
-                };
-                
-                adminLogoImg.src = logoData;
-            }
-            
-            console.log('✅ Logo atualizada na interface!');
-        }
-
-        async function removeLogo() {
-            const headerLogoImg = document.getElementById('logo-image');
-            const headerLogoText = document.getElementById('logo-text');
-            
-            headerLogoImg.classList.add('hidden');
-            headerLogoText.classList.remove('hidden');
-
-            const adminLogoImg = document.getElementById('admin-logo-preview');
-            const adminLogoText = document.getElementById('admin-logo-text');
-            
-            adminLogoImg.classList.add('hidden');
-            adminLogoText.classList.remove('hidden');
-
-            document.getElementById('logo-upload').value = '';
-
-            // Remover do banco de dados
-            if (db.db) {
-                await db.deleteImage('logo');
-            }
-        }
-
-        async function loadSavedLogo() {
-            console.log('🔍 Carregando logo...');
-            
-            try {
-                // Try to load from Supabase first
-                if (db.connected) {
-                    const supabaseLogo = await db.getImage('logo');
-                    if (supabaseLogo && supabaseLogo !== 'data:,' && supabaseLogo.length > 100) {
-                        console.log('✅ Logo encontrada no Supabase! Tamanho:', supabaseLogo.length);
-                        
-                        // Verificar se é uma imagem válida
-                        const img = new Image();
-                        img.onload = function() {
-                            console.log('✅ Logo do Supabase válida!');
-                            updateLogo(supabaseLogo);
-                            // Save to localStorage as backup
-                            localStorage.setItem('kc_perfumaria_logo', supabaseLogo);
-                        };
-                        img.onerror = function() {
-                            console.error('❌ Logo do Supabase corrompida');
-                            loadLogoFromLocalStorage();
-                        };
-                        img.src = supabaseLogo;
-                        return;
-                    }
-                }
-                
-                // Fallback to localStorage
-                loadLogoFromLocalStorage();
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar logo:', error);
-                loadLogoFromLocalStorage();
-            }
-        }
-
-        function loadLogoFromLocalStorage() {
-            console.log('🔍 Carregando logo do localStorage...');
-            
-            try {
-                const localLogo = localStorage.getItem('kc_perfumaria_logo');
-                if (localLogo && localLogo !== 'data:,' && localLogo.length > 100) {
-                    console.log('✅ Logo encontrada no localStorage! Tamanho:', localLogo.length);
-                    
-                    // Verificar se é uma imagem válida
-                    const img = new Image();
-                    img.onload = function() {
-                        console.log('✅ Logo do localStorage válida!');
-                        updateLogo(localLogo);
-                    };
-                    img.onerror = function() {
-                        console.error('❌ Logo corrompida');
-                        localStorage.removeItem('kc_perfumaria_logo');
-                        console.log('ℹ️ Logo removida. Usando padrão.');
-                    };
-                    img.src = localLogo;
-                } else {
-                    console.log('ℹ️ Nenhuma logo encontrada. Usando padrão.');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar logo do localStorage:', error);
-            }
-        }
-
-        async function saveSettings() {
-            try {
-                // Verificar se há logo para salvar
-                const logoImg = document.getElementById('admin-logo-preview');
-                if (logoImg && !logoImg.classList.contains('hidden') && logoImg.src) {
-                    if (db.db) {
-                        await db.saveImage('logo', logoImg.src);
-                        console.log('✅ Logo salva manualmente!');
-                        db.updateDBStatus('Logo salva com sucesso!');
-                        alert('✅ Logo salva com sucesso no banco de dados!');
-                    } else {
-                        alert('❌ Banco de dados não disponível.');
-                    }
-                } else {
-                    alert('⚠️ Nenhuma logo foi selecionada para salvar.');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao salvar configurações:', error);
-                alert('❌ Erro ao salvar logo. Tente novamente.');
-            }
-        }
-
-        async function testLogoSave() {
-            try {
-                console.log('🔍 INICIANDO TESTE COMPLETO DA LOGO...');
-                
-                // 1. Verificar conexão do banco
-                console.log('1️⃣ Verificando banco de dados...');
-                const dbConnected = !!db.db;
-                console.log('Banco conectado:', dbConnected);
-                
-                // 2. Verificar elementos da interface
-                console.log('2️⃣ Verificando elementos da interface...');
-                const logoImg = document.getElementById('admin-logo-preview');
-                const headerLogo = document.getElementById('logo-image');
-                const logoUpload = document.getElementById('logo-upload');
-                
-                console.log('Admin preview existe:', !!logoImg);
-                console.log('Header logo existe:', !!headerLogo);
-                console.log('Upload input existe:', !!logoUpload);
-                
-                // 3. Verificar logo no banco de dados
-                console.log('3️⃣ Verificando logo no banco...');
-                let savedLogoBank = null;
-                if (dbConnected) {
-                    try {
-                        savedLogoBank = await db.getImage('logo');
-                    } catch (error) {
-                        console.error('Erro ao buscar logo no banco:', error);
-                    }
-                }
-                
-                // 4. Verificar logo no localStorage
-                console.log('4️⃣ Verificando logo no localStorage...');
-                let savedLogoLocal = null;
-                try {
-                    savedLogoLocal = localStorage.getItem('kc_perfumaria_logo');
-                } catch (error) {
-                    console.error('Erro ao buscar logo no localStorage:', error);
-                }
-                
-                // 5. Verificar logo na interface
-                console.log('5️⃣ Verificando logo na interface...');
-                const hasLogoInPreview = logoImg && !logoImg.classList.contains('hidden') && logoImg.src && logoImg.src !== '' && !logoImg.src.includes('data:,');
-                const hasLogoInHeader = headerLogo && !headerLogo.classList.contains('hidden') && headerLogo.src && headerLogo.src !== '' && !headerLogo.src.includes('data:,');
-                
-                console.log('Logo no preview:', hasLogoInPreview);
-                console.log('Logo no header:', hasLogoInHeader);
-                
-                // 6. Verificar se há arquivo selecionado
-                const hasFileSelected = logoUpload && logoUpload.files && logoUpload.files.length > 0;
-                
-                // 7. Mostrar resultado detalhado
-                let message = '🔍 DIAGNÓSTICO COMPLETO DA LOGO:\n\n';
-                message += '📊 STATUS DOS SISTEMAS:\n';
-                message += `🗄️ Banco de dados: ${dbConnected ? '✅ Conectado' : '❌ Desconectado'}\n`;
-                message += `💾 Logo no banco: ${savedLogoBank ? '✅ Encontrada' : '❌ Não encontrada'}\n`;
-                message += `🏠 Logo no navegador: ${savedLogoLocal ? '✅ Encontrada' : '❌ Não encontrada'}\n`;
-                message += `📁 Arquivo selecionado: ${hasFileSelected ? '✅ Sim' : '❌ Não'}\n\n`;
-                
-                message += '👁️ STATUS DA EXIBIÇÃO:\n';
-                message += `🖼️ Preview admin: ${hasLogoInPreview ? '✅ Visível' : '❌ Oculta'}\n`;
-                message += `🏠 Logo header: ${hasLogoInHeader ? '✅ Visível' : '❌ Oculta'}\n\n`;
-                
-                // 8. Diagnóstico e recomendações
-                if (savedLogoBank && hasLogoInPreview && hasLogoInHeader) {
-                    message += '🎉 PERFEITO!\n';
-                    message += 'Logo salva e funcionando 100%!';
-                } else if (savedLogoLocal && hasLogoInPreview && hasLogoInHeader) {
-                    message += '✅ FUNCIONANDO!\n';
-                    message += 'Logo salva localmente e exibindo.\n';
-                    if (dbConnected) {
-                        message += 'Será migrada para o banco automaticamente.';
-                    }
-                } else if (savedLogoBank || savedLogoLocal) {
-                    message += '⚠️ LOGO SALVA MAS NÃO EXIBINDO\n';
-                    message += 'Recomendações:\n';
-                    message += '• Recarregue a página (F5)\n';
-                    message += '• Verifique o console (F12) por erros';
-                } else if (hasFileSelected) {
-                    message += '📁 ARQUIVO SELECIONADO\n';
-                    message += 'A logo deveria ter sido salva automaticamente.\n';
-                    message += 'Verifique o console por erros.';
-                } else {
-                    message += '❌ NENHUMA LOGO ENCONTRADA\n';
-                    message += 'SOLUÇÃO:\n';
-                    message += '1. Clique em "Escolher arquivo"\n';
-                    message += '2. Selecione uma imagem\n';
-                    message += '3. A logo será salva automaticamente!';
-                }
-                
-                alert(message);
-                
-                // 9. Log detalhado no console
-                console.log('📋 RESUMO COMPLETO:');
-                console.log('- Banco conectado:', dbConnected);
-                console.log('- Logo no banco:', !!savedLogoBank);
-                console.log('- Logo local:', !!savedLogoLocal);
-                console.log('- Arquivo selecionado:', hasFileSelected);
-                console.log('- Preview visível:', hasLogoInPreview);
-                console.log('- Header visível:', hasLogoInHeader);
-                
-            } catch (error) {
-                console.error('❌ ERRO NO TESTE:', error);
-                alert('❌ ERRO DURANTE O TESTE:\n' + error.message + '\n\nAbra o console (F12) para mais detalhes.');
-            }
-        }
+        // Logo Management - Simplified (no admin logo changes)
+        // Logo stays as default KC text
 
         // Product Management
         function loadProducts() {
@@ -1862,7 +1324,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
         }
 
         // WhatsApp Purchase Function
-        function finalizePurchaseWhatsApp() {
+        async function finalizePurchaseWhatsApp() {
             if (cart.length === 0) {
                 alert('Seu carrinho está vazio!');
                 return;
@@ -1994,7 +1456,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 stock: parseInt(document.getElementById('product-stock').value),
                 description: document.getElementById('product-description').value,
                 image: getRandomEmoji(),
-                image_url: currentProductImage
+                imageUrl: currentProductImage
             };
 
             // Add to memory
@@ -2021,8 +1483,6 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             saveDataToStorage();
             
             loadProducts();
-            updateStockList();
-            updateSalesReport();
             updateProductGallery();
             
             // Reset form
@@ -2043,198 +1503,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             return emojis[Math.floor(Math.random() * emojis.length)];
         }
 
-        function updateStockList() {
-            const stockList = document.getElementById('stock-list');
-            
-            const brandNames = {
-                'boticario': '🌿 Boticário',
-                'mary-kay': '💎 Mary Kay',
-                'eudora': '✨ Eudora',
-                'natura': '🍃 Natura'
-            };
-            
-            stockList.innerHTML = products.map(product => {
-                const productImageHtml = product.imageUrl 
-                    ? `<img src="${product.imageUrl}" alt="${product.name}" class="w-10 h-10 object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                       <span class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-lg" style="display: none;">${product.image}</span>`
-                    : `<span class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-lg">${product.image}</span>`;
-
-                return `
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            ${productImageHtml}
-                            <div>
-                                <h4 class="font-semibold">${product.name}</h4>
-                                <p class="text-xs text-purple-600 font-medium">${brandNames[product.brand]}</p>
-                                <p class="text-sm text-gray-600">R$ ${product.price.toFixed(2)}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="updateStock(${product.id}, -1)" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200">-</button>
-                            <span class="w-12 text-center font-semibold ${product.stock < 5 ? 'text-red-600' : 'text-green-600'}">${product.stock}</span>
-                            <button onclick="updateStock(${product.id}, 1)" class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center hover:bg-green-200">+</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        async function updateStock(productId, change) {
-            const product = products.find(p => p.id === productId);
-            if (product) {
-                const newStock = product.stock + change;
-                if (newStock >= 0) {
-                    product.stock = newStock;
-                    
-                    // Save to Supabase
-                    if (db.connected) {
-                        try {
-                            await db.saveProduct(product);
-                            db.showDBStatus('✅ Estoque atualizado no Supabase!');
-                        } catch (error) {
-                            console.error('❌ Erro ao atualizar estoque no Supabase:', error);
-                        }
-                    }
-                    
-                    saveDataToStorage();
-                    
-                    updateStockList();
-                    updateSalesReport();
-                    loadProducts();
-                }
-            }
-        }
-
-        function updateSalesReport() {
-            const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
-            const productsSold = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
-            const totalStock = products.reduce((sum, product) => sum + product.stock, 0);
-
-            document.getElementById('total-sales').textContent = `R$ ${totalSales.toFixed(2)}`;
-            document.getElementById('products-sold').textContent = productsSold;
-            document.getElementById('total-stock').textContent = totalStock;
-            
-            // Update sales history
-            updateSalesHistory();
-        }
-
-        function updateSalesHistory() {
-            const salesHistory = document.getElementById('sales-history');
-            
-            if (sales.length === 0) {
-                salesHistory.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhuma venda registrada</p>';
-                return;
-            }
-            
-            // Show last 10 sales
-            const recentSales = sales.slice(-10).reverse();
-            
-            salesHistory.innerHTML = recentSales.map(sale => `
-                <div class="bg-gray-50 p-3 rounded-lg mb-2">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <p class="font-semibold text-sm">Pedido #${sale.id}</p>
-                            <p class="text-xs text-gray-600">${sale.dateFormatted || new Date(sale.date).toLocaleDateString('pt-BR')}</p>
-                        </div>
-                        <p class="font-bold text-green-600">R$ ${sale.total.toFixed(2)}</p>
-                    </div>
-                    <div class="text-xs text-gray-600">
-                        ${sale.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Data Export/Import Functions
-        function exportData() {
-            try {
-                const exportData = {
-                    version: '1.0',
-                    exportDate: new Date().toISOString(),
-                    products: products,
-                    sales: sales,
-                    logo: localStorage.getItem('kc_perfumaria_logo')
-                };
-                
-                const dataStr = JSON.stringify(exportData, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `kc-perfumaria-backup-${new Date().toISOString().split('T')[0]}.json`;
-                
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                URL.revokeObjectURL(url);
-                
-                alert('✅ Dados exportados com sucesso! Arquivo salvo na pasta de downloads.');
-            } catch (error) {
-                console.error('❌ Erro ao exportar dados:', error);
-                alert('❌ Erro ao exportar dados. Tente novamente.');
-            }
-        }
-
-        function importData() {
-            const fileInput = document.getElementById('import-file-input');
-            
-            fileInput.onchange = function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const importData = JSON.parse(e.target.result);
-                        
-                        if (!importData.products && !importData.sales) {
-                            alert('❌ Arquivo de backup inválido.');
-                            return;
-                        }
-                        
-                        if (confirm('⚠️ Isso irá substituir todos os dados atuais. Deseja continuar?')) {
-                            // Import products
-                            if (importData.products) {
-                                products = importData.products;
-                            }
-                            
-                            // Import sales
-                            if (importData.sales) {
-                                sales = importData.sales;
-                            }
-                            
-                            // Import logo
-                            if (importData.logo) {
-                                localStorage.setItem('kc_perfumaria_logo', importData.logo);
-                                updateLogo(importData.logo);
-                            }
-                            
-                            // Save to localStorage
-                            saveDataToStorage();
-                            
-                            // Update interface
-                            loadProducts();
-                            updateStockList();
-                            updateSalesReport();
-                            updateProductGallery();
-                            
-                            alert('✅ Dados importados com sucesso!');
-                        }
-                    } catch (error) {
-                        console.error('❌ Erro ao importar dados:', error);
-                        alert('❌ Erro ao importar dados. Verifique se o arquivo está correto.');
-                    }
-                };
-                reader.readAsText(file);
-                
-                // Reset file input
-                fileInput.value = '';
-            };
-            
-            fileInput.click();
-        }
+        // Simplified admin functions - only product management
 
         // Placeholder functions for future features
         function loadStoreConfig() {
@@ -2245,5 +1514,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96d250b334691b25',t:'MTc1NDg1ODQ5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e13d8671b5f18d',t:'MTc1NTAxNTAwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
