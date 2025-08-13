@@ -23,36 +23,35 @@
         .loading { opacity: 0.6; pointer-events: none; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .db-status { position: fixed; top: 20px; right: 20px; z-index: 1000; }
-        .brand-btn.active, .category-btn.active { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
-        
-        /* Mobile adjustments for header */
-        .header-logo { flex-shrink: 0; }
-        .header-buttons { flex-shrink: 0; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; border-radius: 0.5rem; max-width: 28rem; width: 100%; padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body class="bg-gray-50">
+    <!-- Database Status Indicator -->
     <div id="db-status" class="db-status bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hidden">
-        ✅ Dados salvos!
+        ✅ Sistema conectado
     </div>
 
+    <!-- Header -->
     <header class="gradient-bg text-white shadow-lg">
         <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center flex-wrap">
-                <div class="flex items-center space-x-3 mb-4 sm:mb-0">
-                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer header-logo" id="logo-container">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer" id="logo-container" onclick="changeLogo()">
                         <img id="logo-image" class="w-full h-full object-cover hidden" alt="KC Perfumaria">
                         <span id="logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
                     </div>
                     <div>
-                        <h1 class="text-xl sm:text-2xl font-bold">KC Perfumaria</h1>
-                        <p class="text-purple-200 text-sm hidden sm:block">Perfumes e Cosméticos</p>
+                        <h1 class="text-2xl font-bold">KC Perfumaria</h1>
+                        <p class="text-purple-200 text-sm">Perfumes e Cosméticos</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-3 header-buttons">
-                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base">
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
                         🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
                     </button>
-                    <button id="admin-access-btn" onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base">
+                    <button onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
                         ⚙️ <span class="hidden sm:inline">Admin</span>
                     </button>
                 </div>
@@ -60,8 +59,11 @@
         </div>
     </header>
 
+    <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
+        <!-- Customer View -->
         <div id="customer-view">
+            <!-- Brand Filters -->
             <div class="mb-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Marcas</h2>
                 <div class="flex flex-wrap gap-2 sm:gap-3">
@@ -83,6 +85,7 @@
                 </div>
             </div>
 
+            <!-- Categories -->
             <div class="mb-8">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Categorias</h2>
                 <div class="flex flex-wrap gap-2 sm:gap-3">
@@ -101,30 +104,34 @@
                 </div>
             </div>
 
+            <!-- Products Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="products-grid">
-                </div>
+                <!-- Products will be loaded here -->
+            </div>
         </div>
 
+        <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <div class="flex justify-between items-center flex-wrap mb-6">
-                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-0">Painel Administrativo</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Painel Administrativo</h2>
                     <div class="flex space-x-2">
-                        <button onclick="diagnosticSupabase()" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-all text-sm">
+                        <button onclick="diagnosticSupabase()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
                             🔍 Diagnóstico
                         </button>
-                        <button onclick="backToStore()" class="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-all text-sm">
+                        <button onclick="backToStore()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
                             🏪 Voltar para Loja
                         </button>
                     </div>
                 </div>
                 
+                <!-- Logo Management -->
                 <div class="max-w-2xl mx-auto mb-8">
                     <h3 class="text-lg font-semibold mb-4">🖼️ Gerenciar Logo da Loja</h3>
                     <div class="bg-gray-50 rounded-lg p-6">
-                        <div class="flex items-center flex-wrap sm:flex-nowrap space-y-4 sm:space-y-0 sm:space-x-6">
-                            <div class="flex-shrink-0 w-full sm:w-auto">
-                                <div class="w-full sm:w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                        <div class="flex items-center space-x-6">
+                            <div class="flex-shrink-0">
+                                <div class="w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
                                     <img id="admin-logo-image" class="w-full h-full object-cover hidden" alt="Logo atual">
                                     <span id="admin-logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
                                 </div>
@@ -133,14 +140,13 @@
                                 <h4 class="font-semibold text-gray-800 mb-2">Logo Atual</h4>
                                 <p class="text-gray-600 text-sm mb-4">Clique no botão abaixo para alterar a logo da sua loja. Recomendamos imagens quadradas ou retangulares.</p>
                                 <div class="flex space-x-3">
-                                    <button onclick="document.getElementById('logo-file-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all text-sm">
+                                    <button onclick="changeLogoAdmin()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
                                         📷 Alterar Logo
                                     </button>
-                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all text-sm">
+                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all">
                                         🗑️ Remover Logo
                                     </button>
                                 </div>
-                                <input type="file" id="logo-file-input" accept="image/*" class="hidden" onchange="changeLogoAdmin(this.files[0])">
                             </div>
                         </div>
                         <div class="mt-4 text-xs text-gray-500">
@@ -149,9 +155,11 @@
                     </div>
                 </div>
 
+                <!-- Add Product Form -->
                 <div class="max-w-2xl mx-auto">
                     <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
                     <form id="add-product-form" class="space-y-4">
+                        <!-- Product Image Upload -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
                             <div class="image-upload-area" id="product-image-upload" onclick="document.getElementById('product-image-input').click()">
@@ -187,21 +195,24 @@
                         <input type="number" id="product-price" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
                         <input type="number" id="product-stock" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
                         <textarea id="product-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24"></textarea>
-                        <button type="submit" id="add-product-btn" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-all font-semibold">
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-all font-semibold">
                             Adicionar Produto
                         </button>
                     </form>
                 </div>
+            </div>
 
-                <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
-                    <h3 class="text-lg font-semibold mb-4">Produtos Cadastrados</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="product-gallery">
-                        </div>
+            <!-- Product Gallery Management -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Produtos Cadastrados</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="product-gallery">
+                    <!-- Product gallery will be loaded here -->
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Cart Sidebar -->
     <div id="cart-sidebar" class="cart-sidebar fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col">
         <div class="p-6 border-b border-gray-200">
             <div class="flex justify-between items-center">
@@ -221,596 +232,1226 @@
                 <span class="text-lg font-semibold">Total:</span>
                 <span class="text-xl font-bold text-purple-600" id="cart-total">R$ 0,00</span>
             </div>
-            <button id="whatsapp-btn" onclick="finalizePurchaseWhatsApp()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-all font-semibold">
+            <button onclick="finalizePurchaseWhatsApp()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-all font-semibold">
                 📱 Finalizar pelo WhatsApp
             </button>
         </div>
     </div>
 
+    <!-- Overlay -->
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleCart()"></div>
 
     <script>
-        // System Integration with Supabase
+        // Configuration
         const SUPABASE_URL = 'https://udyihngwyqhfhdxkxwso.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkeWlobmd3eXFoZmhkeGt4d3NvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NTcwOTUsImV4cCI6MjA3MDQzMzA5NX0.MA3RgucTM7akkqxF1Zgl4aLtGBFAUT48IKfXez8ZK3c';
+        const ADMIN_PASSWORD = 'kc0310';
+        const WHATSAPP_NUMBER = '5541997786625';
 
+        // Global Variables
+        let supabaseClient = null;
         let products = [];
         let cart = [];
+        let sales = [];
         let currentFilter = 'todos';
         let currentBrand = 'todas';
-        let currentProductImageFile = null;
-        let storeConfig = {
-            logo_url: null,
-        };
+        let currentProductImage = null;
+        let isDbConnected = false;
 
-        const STORE_CONFIG_DATA = {
-            name: 'KC PERFUMARIA',
-            ownerName: 'KELLY CRISTINE',
-            document: '123.456.789-00',
-            city: 'PARANAGUA',
-            state: 'PR',
-            pixKey: '41997786625',
-            pixKeyType: 'phone',
-            whatsapp: '5541997786625',
-        };
-
-        let supabaseClient = null;
+        // Database Management System
         const db = {
             client: null,
             connected: false,
-            STORAGE_BUCKET: 'product_images',
 
             async init() {
                 try {
-                    console.log('🔌 Conectando ao Supabase...');
+                    console.log('🔌 Inicializando conexão com Supabase...');
                     this.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    const { data, error } = await this.client.from('products').select('id').limit(1);
-
+                    
+                    // Test connection
+                    const { data, error } = await this.client
+                        .from('products')
+                        .select('id')
+                        .limit(1);
+                    
                     if (error) {
-                        this.showDBStatus('❌ Erro na conexão', 'bg-red-100 text-red-800');
+                        console.error('❌ Erro na conexão:', error);
                         this.connected = false;
+                        this.showStatus('❌ Banco offline - modo local', 'bg-yellow-100 text-yellow-800');
                         return false;
                     }
+                    
                     this.connected = true;
-                    this.showDBStatus('✅ Sistema conectado', 'bg-green-100 text-green-800');
-                    this.setupRealtimeSubscription();
+                    isDbConnected = true;
+                    console.log('✅ Supabase conectado com sucesso!');
+                    this.showStatus('✅ Sistema online', 'bg-green-100 text-green-800');
                     return true;
                 } catch (error) {
-                    this.showDBStatus('❌ Erro na inicialização', 'bg-red-100 text-red-800');
+                    console.error('❌ Erro ao inicializar Supabase:', error);
                     this.connected = false;
+                    this.showStatus('❌ Erro de conexão', 'bg-red-100 text-red-800');
                     return false;
                 }
-            },
-            
-            setupRealtimeSubscription() {
-                if (!this.connected) return;
-                this.client
-                    .channel('schema-db-changes')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-                        console.log('📢 Mudança de produto em tempo real recebida!', payload);
-                        updateUI();
-                    })
-                    .subscribe();
-                console.log('✅ Inscrição em tempo real ativada.');
             },
 
-            async loadProducts() {
-                if (!this.connected) return [];
-                const { data, error } = await this.client
-                    .from('products')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                if (error) {
-                    console.error('❌ Erro ao carregar produtos:', error);
-                    return [];
-                }
-                return data || [];
-            },
-
-            async loadStoreConfig() {
-                if (!this.connected) return null;
-                const { data, error } = await this.client.from('configs').select('logo_url').single();
-                if (error && error.code !== 'PGRST116') {
-                    console.error('❌ Erro ao carregar URL do logo:', error);
-                    return null;
-                }
-                return data ? data.logo_url : null;
-            },
-
-            async saveProduct(product) {
-                if (!this.connected) return false;
-                const { error } = await this.client.from('products').upsert(product, { onConflict: 'id', ignoreDuplicates: false });
-                if (error) {
-                    console.error('❌ Erro ao salvar produto:', error.message);
-                    return false;
-                }
-                return true;
-            },
-            
-            async deleteProduct(productId) {
-                if (!this.connected) return false;
-                const { error } = await this.client.from('products').delete().eq('id', productId);
-                if (error) {
-                    console.error('❌ Erro ao excluir produto:', error);
-                    return false;
-                }
-                return true;
-            },
-            
-            async uploadImage(file, filePath) {
-                if (!this.connected) return { data: null, error: new Error('Não conectado.') };
-                const { data, error } = await this.client.storage.from(this.STORAGE_BUCKET).upload(filePath, file, { cacheControl: '3600', upsert: true });
-                if (error) {
-                    console.error('❌ Erro ao enviar imagem:', error);
-                    return { data: null, error };
-                }
-                const { data: publicUrlData } = this.client.storage.from(this.STORAGE_BUCKET).getPublicUrl(filePath);
-                return { data: publicUrlData.publicUrl, error: null };
-            },
-            
-            async deleteImage(filePath) {
-                if (!this.connected) return { error: new Error('Não conectado.') };
-                const { error } = await this.client.storage.from(this.STORAGE_BUCKET).remove([filePath]);
-                if (error) {
-                    console.error('❌ Erro ao excluir imagem:', error);
-                    return { error };
-                }
-                return { error: null };
-            },
-            
-            async saveLogoUrl(url) {
-                if (!this.connected) return false;
-                const { error } = await this.client.from('configs').upsert({ id: 1, logo_url: url }, { onConflict: 'id' });
-                if (error) {
-                    console.error('❌ Erro ao salvar URL do logo:', error);
-                    return false;
-                }
-                return true;
-            },
-            
-            showDBStatus(message, className = 'bg-green-100 text-green-800') {
+            showStatus(message, className = 'bg-green-100 text-green-800') {
                 const statusEl = document.getElementById('db-status');
                 if (statusEl) {
                     statusEl.textContent = message;
                     statusEl.className = `db-status px-3 py-1 rounded-full text-sm font-medium ${className}`;
                     statusEl.classList.remove('hidden');
-                    setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
+                    
+                    setTimeout(() => {
+                        statusEl.classList.add('hidden');
+                    }, 3000);
                 }
             },
+
+            async loadProducts() {
+                if (!this.connected) return [];
+                
+                try {
+                    const { data, error } = await this.client
+                        .from('products')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    console.log(`📦 ${data?.length || 0} produtos carregados do Supabase`);
+                    return data || [];
+                } catch (error) {
+                    console.error('❌ Erro ao carregar produtos:', error);
+                    return [];
+                }
+            },
+
+            async saveProduct(product) {
+                if (!this.connected) return false;
+                
+                try {
+                    const productData = {
+                        id: product.id,
+                        name: product.name,
+                        brand: product.brand,
+                        category: product.category,
+                        price: parseFloat(product.price),
+                        stock: parseInt(product.stock),
+                        description: product.description || '',
+                        image: product.image || '🌸',
+                        image_url: product.imageUrl || null
+                    };
+                    
+                    const { data, error } = await this.client
+                        .from('products')
+                        .upsert(productData, { onConflict: 'id' })
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Produto salvo no Supabase:', product.name);
+                    this.showStatus('✅ Produto salvo!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao salvar produto:', error);
+                    return false;
+                }
+            },
+
+            async deleteProduct(productId) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { error } = await this.client
+                        .from('products')
+                        .delete()
+                        .eq('id', productId);
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Produto excluído do Supabase');
+                    this.showStatus('✅ Produto excluído!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao excluir produto:', error);
+                    return false;
+                }
+            },
+
+            async uploadImage(file, fileName) {
+                if (!this.connected) return null;
+                
+                try {
+                    const { data, error } = await this.client.storage
+                        .from('product_images')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                        });
+                    
+                    if (error) throw error;
+                    
+                    const { data: urlData } = this.client.storage
+                        .from('product_images')
+                        .getPublicUrl(fileName);
+                    
+                    console.log('✅ Imagem enviada para Supabase Storage');
+                    return urlData.publicUrl;
+                } catch (error) {
+                    console.error('❌ Erro ao enviar imagem:', error);
+                    return null;
+                }
+            },
+
+            async deleteImage(fileName) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { error } = await this.client.storage
+                        .from('product_images')
+                        .remove([fileName]);
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Imagem excluída do Storage');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao excluir imagem:', error);
+                    return false;
+                }
+            },
+
+            async saveSale(sale) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { data, error } = await this.client
+                        .from('sales')
+                        .insert(sale)
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Venda salva no Supabase');
+                    this.showStatus('✅ Venda registrada!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao salvar venda:', error);
+                    return false;
+                }
+            }
         };
 
-        // UI and Event Handlers
-        window.accessAdmin = async () => {
-            const adminToken = localStorage.getItem('adminToken');
-            if (adminToken === 'kc0310') {
-                showAdminPanel();
+        // Utility Functions
+        function getRandomEmoji() {
+            const emojis = ['🌸', '💄', '🧴', '✨', '💎', '🌺', '🎀', '💋', '🌷', '🦋'];
+            return emojis[Math.floor(Math.random() * emojis.length)];
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(price);
+        }
+
+        function showModal(title, content, buttons = []) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3 class="text-lg font-bold mb-4">${title}</h3>
+                    <div class="mb-6">${content}</div>
+                    <div class="flex justify-end space-x-2">
+                        ${buttons.map(btn => `<button onclick="${btn.action}" class="${btn.class}">${btn.text}</button>`).join('')}
+                        <button onclick="this.closest('.modal-overlay').remove()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-all">Fechar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        // Local Storage Functions
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('kc_products', JSON.stringify(products));
+                localStorage.setItem('kc_sales', JSON.stringify(sales));
+                localStorage.setItem('kc_cart', JSON.stringify(cart));
+                console.log('💾 Dados salvos no localStorage');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao salvar no localStorage:', error);
+                return false;
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedProducts = localStorage.getItem('kc_products');
+                const savedSales = localStorage.getItem('kc_sales');
+                const savedCart = localStorage.getItem('kc_cart');
+                
+                if (savedProducts) {
+                    products = JSON.parse(savedProducts);
+                    console.log(`📱 ${products.length} produtos carregados do localStorage`);
+                }
+                
+                if (savedSales) {
+                    sales = JSON.parse(savedSales);
+                    console.log(`💰 ${sales.length} vendas carregadas do localStorage`);
+                }
+                
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                    console.log(`🛒 ${cart.length} itens carregados no carrinho`);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao carregar do localStorage:', error);
+                return false;
+            }
+        }
+
+        // Image Handling Functions
+        function setupProductImageUpload() {
+            const imageInput = document.getElementById('product-image-input');
+            const uploadArea = document.getElementById('product-image-upload');
+            
+            if (!imageInput || !uploadArea) return;
+            
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    handleProductImageFile(file);
+                }
+            });
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    handleProductImageFile(file);
+                }
+            });
+        }
+
+        function handleProductImageFile(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
                 return;
             }
-            const password = prompt('🔐 Digite a senha de administrador:');
-            if (password === 'kc0310') {
-                localStorage.setItem('adminToken', 'kc0310');
-                showAdminPanel();
-                db.showDBStatus('🎉 Acesso administrativo concedido!');
-            } else if (password !== null) {
-                alert('❌ Senha incorreta! Acesso negado.');
+
+            if (!file.type.startsWith('image/')) {
+                alert('❌ Por favor, selecione apenas arquivos de imagem.');
+                return;
             }
-        };
 
-        window.backToStore = () => {
-            document.getElementById('customer-view').style.display = 'block';
-            document.getElementById('admin-panel').style.display = 'none';
-            document.getElementById('admin-panel').classList.add('admin-panel');
-            
-            // Reverter a funcionalidade do botão de admin para o estado inicial
-            const adminBtn = document.getElementById('admin-access-btn');
-            adminBtn.textContent = '⚙️ Admin';
-            adminBtn.onclick = accessAdmin;
-            
-            localStorage.removeItem('adminToken');
-            db.showDBStatus('👋 Retornando para a loja.');
-            
-            const cartSidebar = document.getElementById('cart-sidebar');
-            const overlay = document.getElementById('overlay');
-            if (cartSidebar.classList.contains('open')) {
-                toggleCart();
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentProductImage = {
+                    file: file,
+                    dataUrl: e.target.result
+                };
+                showImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(imageData) {
+            const previewContainer = document.getElementById('image-preview-container');
+            const uploadPlaceholder = document.getElementById('upload-placeholder');
+            const imagePreview = document.getElementById('image-preview');
+
+            if (previewContainer && uploadPlaceholder && imagePreview) {
+                imagePreview.src = imageData;
+                previewContainer.classList.remove('hidden');
+                uploadPlaceholder.classList.add('hidden');
             }
-        };
+        }
 
-        window.toggleCart = () => {
-            document.getElementById('cart-sidebar').classList.toggle('open');
-            document.getElementById('overlay').classList.toggle('hidden');
-        };
+        function removeProductImage(event) {
+            event.stopPropagation();
+            
+            const previewContainer = document.getElementById('image-preview-container');
+            const uploadPlaceholder = document.getElementById('upload-placeholder');
+            const imageInput = document.getElementById('product-image-input');
 
-        window.addToCart = (productId) => {
-            const existingItem = cart.find(item => item.productId === productId);
-            if (existingItem) {
-                existingItem.quantity += 1;
-            } else {
-                cart.push({ productId: productId, quantity: 1 });
+            currentProductImage = null;
+            
+            if (previewContainer && uploadPlaceholder && imageInput) {
+                previewContainer.classList.add('hidden');
+                uploadPlaceholder.classList.remove('hidden');
+                imageInput.value = '';
             }
-            renderCart();
-            db.showDBStatus('✔️ Produto adicionado ao carrinho!');
-        };
+        }
 
-        window.removeFromCart = (productId) => {
-            cart = cart.filter(item => item.productId !== productId);
-            renderCart();
-            db.showDBStatus('✔️ Produto removido do carrinho!');
-        };
+        // Logo Management Functions
+        function changeLogo() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
 
-        window.updateQuantity = (productId, change) => {
-            const item = cart.find(item => item.productId === productId);
-            if (item) {
-                item.quantity += change;
-                if (item.quantity <= 0) {
-                    removeFromCart(productId);
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        updateLogo(e.target.result);
+                        localStorage.setItem('kc_logo', e.target.result);
+                        alert('✅ Logo atualizada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function changeLogoAdmin() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const logoData = e.target.result;
+                        updateLogo(logoData);
+                        updateAdminLogoPreview(logoData);
+                        localStorage.setItem('kc_logo', logoData);
+                        alert('✅ Logo atualizada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function removeLogoAdmin() {
+            if (confirm('🗑️ Tem certeza que deseja remover a logo?')) {
+                updateLogo(null);
+                updateAdminLogoPreview(null);
+                localStorage.removeItem('kc_logo');
+                alert('✅ Logo removida com sucesso!');
+            }
+        }
+
+        function updateLogo(logoData) {
+            const logoImage = document.getElementById('logo-image');
+            const logoText = document.getElementById('logo-text');
+            
+            if (logoImage && logoText) {
+                if (logoData) {
+                    logoImage.src = logoData;
+                    logoImage.classList.remove('hidden');
+                    logoText.classList.add('hidden');
                 } else {
-                    renderCart();
+                    logoImage.classList.add('hidden');
+                    logoText.classList.remove('hidden');
                 }
             }
-        };
+        }
 
-        window.finalizePurchaseWhatsApp = () => {
-            if (cart.length === 0) {
-                alert('Seu carrinho está vazio!');
+        function updateAdminLogoPreview(logoData) {
+            const adminLogoImage = document.getElementById('admin-logo-image');
+            const adminLogoText = document.getElementById('admin-logo-text');
+            
+            if (adminLogoImage && adminLogoText) {
+                if (logoData) {
+                    adminLogoImage.src = logoData;
+                    adminLogoImage.classList.remove('hidden');
+                    adminLogoText.classList.add('hidden');
+                } else {
+                    adminLogoImage.classList.add('hidden');
+                    adminLogoText.classList.remove('hidden');
+                }
+            }
+        }
+
+        // Product Management Functions
+        async function loadAndRenderProducts() {
+            try {
+                console.log('🔄 Carregando produtos...');
+                
+                if (isDbConnected) {
+                    const supabaseProducts = await db.loadProducts();
+                    if (supabaseProducts && supabaseProducts.length > 0) {
+                        products = supabaseProducts;
+                        console.log(`✅ ${products.length} produtos carregados do Supabase`);
+                        saveToLocalStorage();
+                    } else {
+                        loadFromLocalStorage();
+                    }
+                } else {
+                    loadFromLocalStorage();
+                }
+                
+                renderProducts();
+                updateProductGallery();
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar produtos:', error);
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+            }
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('products-grid');
+            if (!grid) return;
+            
+            let filteredProducts = products;
+
+            if (currentBrand !== 'todas') {
+                filteredProducts = filteredProducts.filter(p => p.brand === currentBrand);
+            }
+
+            if (currentFilter !== 'todos') {
+                filteredProducts = filteredProducts.filter(p => p.category === currentFilter);
+            }
+
+            const brandNames = {
+                'boticario': '🌿 Boticário',
+                'mary-kay': '💎 Mary Kay',
+                'eudora': '✨ Eudora',
+                'natura': '🍃 Natura'
+            };
+
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto encontrado</div>';
                 return;
             }
 
-            const total = cart.reduce((sum, item) => {
-                const product = products.find(p => p.id === item.productId);
-                return sum + (product ? product.price * item.quantity : 0);
-            }, 0);
+            grid.innerHTML = filteredProducts.map(product => {
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="product-image-placeholder" style="display: none;">${product.image}</div>`
+                    : `<div class="product-image-placeholder">${product.image}</div>`;
 
-            let message = `Olá, gostaria de finalizar meu pedido na KC Perfumaria!\n\n🛍️ *Itens do Carrinho:*\n`;
-            cart.forEach(item => {
-                const product = products.find(p => p.id === item.productId);
-                if (product) {
-                    message += `- ${item.quantity}x ${product.name} (R$ ${product.price.toFixed(2).replace('.', ',')})\n`;
-                }
-            });
-            message += `\n*Total do Pedido: R$ ${total.toFixed(2).replace('.', ',')}*`;
-            message += `\n\nQual a forma de pagamento?`;
+                return `
+                    <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
+                        <div class="p-0">
+                            ${productImageHtml}
+                        </div>
+                        <div class="p-6">
+                            <div class="text-xs text-purple-600 font-semibold mb-2 text-center">${brandNames[product.brand] || product.brand}</div>
+                            <h3 class="font-semibold text-lg mb-2 line-clamp-2">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${product.description || ''}</p>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-2xl font-bold text-purple-600">${formatPrice(product.price)}</span>
+                                <span class="text-sm text-gray-500">Estoque: ${product.stock}</span>
+                            </div>
+                            <button onclick="addToCart(${product.id})" 
+                                    ${product.stock === 0 ? 'disabled' : ''}
+                                    class="w-full py-2 px-4 rounded-lg font-semibold transition-all
+                                    ${product.stock === 0 
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                        : 'bg-purple-600 text-white hover:bg-purple-700'}">
+                                ${product.stock === 0 ? 'Sem Estoque' : '🛒 Adicionar ao Carrinho'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
-            const whatsappUrl = `https://wa.me/${STORE_CONFIG_DATA.whatsapp}?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, '_blank');
-            cart = [];
-            renderCart();
-            toggleCart();
-        };
+        function updateProductGallery() {
+            const gallery = document.getElementById('product-gallery');
+            if (!gallery) return;
+            
+            const brandNames = {
+                'boticario': '🌿 Boticário',
+                'mary-kay': '💎 Mary Kay',
+                'eudora': '✨ Eudora',
+                'natura': '🍃 Natura'
+            };
 
-        window.filterProducts = (category) => {
-            currentFilter = category;
-            renderProducts();
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-                btn.classList.add('bg-gray-200', 'text-gray-700');
-            });
-            const activeBtn = document.querySelector(`.category-btn[onclick="filterProducts('${category}')"]`);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
-                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+            if (products.length === 0) {
+                gallery.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto cadastrado</div>';
+                return;
             }
-        };
 
-        window.filterByBrand = (brand) => {
+            gallery.innerHTML = products.map(product => {
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="w-full h-32 object-cover rounded-lg mb-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2" style="display: none;">${product.image}</div>`
+                    : `<div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2">${product.image}</div>`;
+
+                return `
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        ${productImageHtml}
+                        <div class="text-xs text-purple-600 font-medium mb-1">${brandNames[product.brand] || product.brand}</div>
+                        <h4 class="font-semibold text-sm mb-1 line-clamp-2">${product.name}</h4>
+                        <p class="text-xs text-gray-600 mb-2">${formatPrice(product.price)} | Estoque: ${product.stock}</p>
+                        <div class="flex space-x-1">
+                            <button onclick="editProduct(${product.id})" class="flex-1 bg-green-100 text-green-600 text-xs py-1 px-2 rounded hover:bg-green-200 transition-all">
+                                ✏️ Editar
+                            </button>
+                            <button onclick="editProductImage(${product.id})" class="flex-1 bg-blue-100 text-blue-600 text-xs py-1 px-2 rounded hover:bg-blue-200 transition-all">
+                                📷 Foto
+                            </button>
+                            <button onclick="deleteProduct(${product.id})" class="flex-1 bg-red-100 text-red-600 text-xs py-1 px-2 rounded hover:bg-red-200 transition-all">
+                                🗑️ Excluir
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function editProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3 class="text-lg font-bold mb-4">✏️ Editar Produto</h3>
+                    <form id="edit-product-form">
+                        <input type="text" id="edit-name" value="${product.name}" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <select id="edit-brand" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="boticario" ${product.brand === 'boticario' ? 'selected' : ''}>🌿 Boticário</option>
+                            <option value="mary-kay" ${product.brand === 'mary-kay' ? 'selected' : ''}>💎 Mary Kay</option>
+                            <option value="eudora" ${product.brand === 'eudora' ? 'selected' : ''}>✨ Eudora</option>
+                            <option value="natura" ${product.brand === 'natura' ? 'selected' : ''}>🍃 Natura</option>
+                        </select>
+                        
+                        <select id="edit-category" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="perfumes" ${product.category === 'perfumes' ? 'selected' : ''}>Perfumes</option>
+                            <option value="cosmeticos" ${product.category === 'cosmeticos' ? 'selected' : ''}>Cosméticos</option>
+                            <option value="cuidados" ${product.category === 'cuidados' ? 'selected' : ''}>Cuidados</option>
+                        </select>
+                        
+                        <input type="number" id="edit-price" value="${product.price}" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <input type="number" id="edit-stock" value="${product.stock}" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <textarea id="edit-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-20 focus:ring-2 focus:ring-purple-500">${product.description || ''}</textarea>
+                        
+                        <div class="flex space-x-2">
+                            <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                ✅ Salvar
+                            </button>
+                            <button type="button" onclick="this.closest('.modal-overlay').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            document.getElementById('edit-product-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                product.name = document.getElementById('edit-name').value;
+                product.brand = document.getElementById('edit-brand').value;
+                product.category = document.getElementById('edit-category').value;
+                product.price = parseFloat(document.getElementById('edit-price').value);
+                product.stock = parseInt(document.getElementById('edit-stock').value);
+                product.description = document.getElementById('edit-description').value;
+                
+                if (isDbConnected) {
+                    await db.saveProduct(product);
+                }
+                
+                saveToLocalStorage();
+                await loadAndRenderProducts();
+                modal.remove();
+                
+                alert('✅ Produto atualizado com sucesso!');
+            });
+        }
+
+        async function editProductImage(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
+                        return;
+                    }
+
+                    try {
+                        let imageUrl = null;
+                        
+                        if (isDbConnected) {
+                            const fileName = `product_${product.id}_${Date.now()}`;
+                            imageUrl = await db.uploadImage(file, fileName);
+                        }
+                        
+                        if (!imageUrl) {
+                            // Fallback to base64
+                            const reader = new FileReader();
+                            reader.onload = async function(e) {
+                                product.imageUrl = e.target.result;
+                                product.image_url = e.target.result;
+                                
+                                if (isDbConnected) {
+                                    await db.saveProduct(product);
+                                }
+                                
+                                saveToLocalStorage();
+                                await loadAndRenderProducts();
+                                alert('✅ Foto do produto atualizada!');
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            product.imageUrl = imageUrl;
+                            product.image_url = imageUrl;
+                            
+                            if (isDbConnected) {
+                                await db.saveProduct(product);
+                            }
+                            
+                            saveToLocalStorage();
+                            await loadAndRenderProducts();
+                            alert('✅ Foto do produto atualizada!');
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao atualizar imagem:', error);
+                        alert('❌ Erro ao atualizar imagem. Tente novamente.');
+                    }
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        async function deleteProduct(productId) {
+            if (confirm('🗑️ Tem certeza que deseja excluir este produto?')) {
+                try {
+                    if (isDbConnected) {
+                        await db.deleteProduct(productId);
+                        
+                        // Delete image if exists
+                        const product = products.find(p => p.id === productId);
+                        if (product && product.imageUrl && product.imageUrl.includes('supabase')) {
+                            const fileName = product.imageUrl.split('/').pop();
+                            await db.deleteImage(fileName);
+                        }
+                    }
+                    
+                    products = products.filter(p => p.id !== productId);
+                    saveToLocalStorage();
+                    await loadAndRenderProducts();
+                    
+                    alert('✅ Produto excluído com sucesso!');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao excluir produto:', error);
+                    alert('❌ Erro ao excluir produto. Tente novamente.');
+                }
+            }
+        }
+
+        // Filter Functions
+        function filterByBrand(brand) {
             currentBrand = brand;
-            renderProducts();
+            
             document.querySelectorAll('.brand-btn').forEach(btn => {
                 btn.classList.remove('active', 'bg-purple-600', 'text-white');
                 btn.classList.add('bg-gray-200', 'text-gray-700');
             });
-            const activeBtn = document.querySelector(`.brand-btn[onclick="filterByBrand('${brand}')"]`);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
-                activeBtn.classList.add('active', 'bg-purple-600', 'text-white');
-            }
-        };
-        
-        window.editProduct = async (productId) => {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-            const newName = prompt('Novo nome do produto:', product.name);
-            if (newName !== null) {
-                const newPrice = parseFloat(prompt('Novo preço do produto:', product.price));
-                if (!isNaN(newPrice)) {
-                    const updatedProduct = { ...product, name: newName, price: newPrice };
-                    await db.saveProduct(updatedProduct);
-                    db.showDBStatus('✅ Produto atualizado!');
-                }
-            }
-        };
-
-        window.deleteProduct = async (productId) => {
-            if (confirm('Tem certeza que deseja excluir este produto?')) {
-                const product = products.find(p => p.id === productId);
-                if (product && product.image_url) {
-                    const filePath = product.image_url.split('/').pop();
-                    await db.deleteImage(filePath);
-                }
-                await db.deleteProduct(productId);
-                db.showDBStatus('✅ Produto excluído!');
-            }
-        };
-
-        window.removeProductImage = (event) => {
-            if (event) { event.preventDefault(); event.stopPropagation(); }
-            document.getElementById('product-image-input').value = '';
-            currentProductImageFile = null;
-            document.getElementById('image-preview-container').classList.add('hidden');
-            document.getElementById('upload-placeholder').classList.remove('hidden');
-        };
-
-        window.changeLogoAdmin = async (file) => {
-            if (!file) return;
-            const filePath = `logo/store_logo.png`;
             
-            // Upload da nova logo
-            const { data: uploadData, error: uploadError } = await db.client.storage.from(db.STORAGE_BUCKET).upload(filePath, file, {
-                upsert: true,
+            event.target.classList.add('active', 'bg-purple-600', 'text-white');
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            
+            renderProducts();
+        }
+
+        function filterProducts(category) {
+            currentFilter = category;
+            
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
             });
+            
+            event.target.classList.add('active', 'bg-indigo-600', 'text-white');
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            
+            renderProducts();
+        }
 
-            if (uploadError) {
-                db.showDBStatus('❌ Erro ao enviar logo! Verifique o console.', 'bg-red-100 text-red-800');
-                console.error('❌ Erro no upload da logo:', uploadError);
-                return;
-            }
+        // Cart Management Functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock === 0) return;
 
-            // Obter a URL pública da nova logo
-            const { data: publicUrlData } = db.client.storage.from(db.STORAGE_BUCKET).getPublicUrl(filePath);
-            const publicUrl = publicUrlData.publicUrl;
-
-            // Salvar a URL no banco de dados
-            if (await db.saveLogoUrl(publicUrl)) {
-                storeConfig.logo_url = publicUrl;
-                renderLogo();
-                renderAdminLogo();
-                db.showDBStatus('✅ Logo atualizado!');
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                if (existingItem.quantity < product.stock) {
+                    existingItem.quantity++;
+                }
             } else {
-                db.showDBStatus('❌ Erro ao salvar URL da logo no banco de dados!', 'bg-red-100 text-red-800');
-            }
-        };
-
-        window.removeLogoAdmin = async () => {
-            if (confirm('Tem certeza que deseja remover o logo?')) {
-                const filePath = `logo/store_logo.png`;
-                await db.deleteImage(filePath);
-                if (await db.saveLogoUrl(null)) {
-                    storeConfig.logo_url = null;
-                    renderLogo();
-                    renderAdminLogo();
-                    db.showDBStatus('✅ Logo removido!');
-                }
-            }
-        };
-
-        window.diagnosticSupabase = async () => {
-            // Your diagnostic logic remains the same
-            alert('Diagnóstico do Supabase concluído. Verifique o console para os resultados.');
-        };
-
-        const renderLogo = () => {
-            const logoImageEl = document.getElementById('logo-image');
-            const logoTextEl = document.getElementById('logo-text');
-            const adminLogoImageEl = document.getElementById('admin-logo-image');
-            const adminLogoTextEl = document.getElementById('admin-logo-text');
-
-            if (logoImageEl && logoTextEl) {
-                if (storeConfig.logo_url) {
-                    logoImageEl.src = storeConfig.logo_url;
-                    logoImageEl.classList.remove('hidden');
-                    logoTextEl.classList.add('hidden');
-                } else {
-                    logoImageEl.src = '';
-                    logoImageEl.classList.add('hidden');
-                    logoTextEl.classList.remove('hidden');
-                }
-            }
-            // Ensure admin panel logo is also updated
-            if (adminLogoImageEl && adminLogoTextEl) {
-                if (storeConfig.logo_url) {
-                    adminLogoImageEl.src = storeConfig.logo_url;
-                    adminLogoImageEl.classList.remove('hidden');
-                    adminLogoTextEl.classList.add('hidden');
-                } else {
-                    adminLogoImageEl.src = '';
-                    adminLogoImageEl.classList.add('hidden');
-                    adminLogoTextEl.classList.remove('hidden');
-                }
-            }
-        };
-        
-        const renderProducts = () => {
-            const productsGrid = document.getElementById('products-grid');
-            if (!productsGrid) return;
-            productsGrid.innerHTML = '';
-            const filteredProducts = products.filter(product =>
-                (currentFilter === 'todos' || product.category === currentFilter) &&
-                (currentBrand === 'todas' || product.brand === currentBrand)
-            );
-            if (filteredProducts.length === 0) {
-                productsGrid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Nenhum produto encontrado nesta categoria ou marca.</p>';
-            }
-            filteredProducts.forEach(product => {
-                const productCard = document.createElement('div');
-                productCard.className = 'bg-white rounded-lg shadow-md overflow-hidden product-card';
-                productCard.innerHTML = `
-                    <div class="relative">
-                        <div class="product-image-placeholder ${product.image_url ? 'hidden' : ''}">🌸</div>
-                        <img src="${product.image_url || ''}" alt="${product.name}" class="product-image ${product.image_url ? '' : 'hidden'}">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-semibold text-purple-600">${product.brand.toUpperCase().replace('-', ' ')}</span>
-                            <span class="text-xs text-gray-500">${product.category}</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-800 line-clamp-2">${product.name}</h3>
-                        <p class="text-xl font-bold text-purple-700 mt-2">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
-                        <button onclick="addToCart('${product.id}')" class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-all font-semibold">Adicionar ao Carrinho</button>
-                    </div>
-                `;
-                productsGrid.appendChild(productCard);
-            });
-        };
-
-        const renderProductGallery = () => {
-            const galleryEl = document.getElementById('product-gallery');
-            if (!galleryEl) return;
-            galleryEl.innerHTML = '';
-            if (products.length === 0) {
-                galleryEl.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">Nenhum produto cadastrado.</p>';
-                return;
-            }
-            products.forEach(product => {
-                const productCard = document.createElement('div');
-                productCard.className = 'bg-white rounded-lg shadow-md p-4 flex flex-col justify-between';
-                productCard.innerHTML = `
-                    <div>
-                        <div class="product-image-placeholder ${product.image_url ? 'hidden' : ''}" style="height: 128px;">🌸</div>
-                        <img src="${product.image_url || ''}" alt="${product.name}" class="w-full h-32 object-cover rounded-md mb-4 ${product.image_url ? '' : 'hidden'}">
-                        <h4 class="font-bold text-lg mb-1 line-clamp-2">${product.name}</h4>
-                        <p class="text-sm text-gray-600">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
-                        <p class="text-xs text-gray-500 mt-1">Estoque: ${product.stock}</p>
-                    </div>
-                    <div class="mt-4 flex gap-2">
-                        <button onclick="editProduct('${product.id}')" class="flex-1 bg-blue-100 text-blue-600 text-sm px-3 py-2 rounded-lg hover:bg-blue-200">Editar</button>
-                        <button onclick="deleteProduct('${product.id}')" class="flex-1 bg-red-100 text-red-600 text-sm px-3 py-2 rounded-lg hover:bg-red-200">Excluir</button>
-                    </div>
-                `;
-                galleryEl.appendChild(productCard);
-            });
-        };
-
-        const renderCart = () => {
-            const cartItemsEl = document.getElementById('cart-items');
-            const cartTotalEl = document.getElementById('cart-total');
-            const cartCountEl = document.getElementById('cart-count');
-            if (!cartItemsEl || !cartTotalEl || !cartCountEl) return;
-            cartItemsEl.innerHTML = '';
-            let total = 0;
-            if (cart.length === 0) {
-                cartItemsEl.innerHTML = '<p class="text-gray-500 text-center py-8">Carrinho vazio</p>';
-            } else {
-                cart.forEach(item => {
-                    const product = products.find(p => p.id === item.productId);
-                    if (!product) return;
-                    const itemTotal = product.price * item.quantity;
-                    total += itemTotal;
-                    const cartItemEl = document.createElement('div');
-                    cartItemEl.className = 'flex items-center gap-4 py-4 border-b border-gray-100 last:border-b-0';
-                    cartItemEl.innerHTML = `
-                        <img src="${product.image_url || 'https://via.placeholder.com/80'}" alt="${product.name}" class="w-16 h-16 object-cover rounded-md">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gray-800">${product.name}</h4>
-                            <p class="text-sm text-gray-600">R$ ${product.price.toFixed(2)}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button onclick="updateQuantity('${product.id}', -1)" class="bg-gray-200 text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-300">-</button>
-                            <span>${item.quantity}</span>
-                            <button onclick="updateQuantity('${product.id}', 1)" class="bg-gray-200 text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-300">+</button>
-                        </div>
-                        <button onclick="removeFromCart('${product.id}')" class="text-red-500 hover:text-red-700 transition-colors ml-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    `;
-                    cartItemsEl.appendChild(cartItemEl);
+                cart.push({
+                    id: productId,
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
+                    image: product.image,
+                    imageUrl: product.imageUrl || product.image_url
                 });
             }
-            cartTotalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-            cartCountEl.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
-        };
+            
+            updateCartDisplay();
+            saveToLocalStorage();
+        }
 
-        const showAdminPanel = () => {
-            document.getElementById('customer-view').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'block';
-            document.getElementById('admin-panel').classList.remove('admin-panel');
-            const adminBtn = document.getElementById('admin-access-btn');
-            adminBtn.textContent = '🔒 Sair Admin';
-            adminBtn.onclick = backToStore;
-            renderLogo(); // Call renderLogo() instead of renderAdminLogo() to ensure both logos are updated
-            renderProductGallery();
-        };
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartDisplay();
+            saveToLocalStorage();
+        }
 
-        const updateUI = async () => {
-            products = await db.loadProducts();
-            renderProducts();
-            renderCart();
-            renderProductGallery();
-        };
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const connected = await db.init();
-            if (connected) {
-                storeConfig.logo_url = await db.loadStoreConfig();
-            }
-            renderLogo();
-            await updateUI();
-
-            const adminToken = localStorage.getItem('adminToken');
-            if (adminToken === 'kc0310') {
-                showAdminPanel();
-            }
-
-            document.getElementById('add-product-form').addEventListener('submit', async (event) => {
-                event.preventDefault();
-                const form = event.target;
-                const submitBtn = document.getElementById('add-product-btn');
-                
-                if (!currentProductImageFile) {
-                    alert('⚠️ Por favor, adicione uma foto para o produto.');
+        function updateQuantity(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            const product = products.find(p => p.id === productId);
+            
+            if (item && product) {
+                const newQuantity = item.quantity + change;
+                if (newQuantity > 0 && newQuantity <= product.stock) {
+                    item.quantity = newQuantity;
+                } else if (newQuantity <= 0) {
+                    removeFromCart(productId);
                     return;
                 }
-                
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Adicionando...';
-                
-                const productId = 'prod_' + Date.now();
-                const filePath = `products/${productId}_${currentProductImageFile.name}`;
-                
-                const { data: imageUrl, error: uploadError } = await db.uploadImage(currentProductImageFile, filePath);
-                
-                if (uploadError) {
-                    db.showDBStatus('❌ Erro ao enviar foto do produto!', 'bg-red-100 text-red-800');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Adicionar Produto';
-                    return;
+            }
+            updateCartDisplay();
+            saveToLocalStorage();
+        }
+
+        function updateCartDisplay() {
+            const cartItems = document.getElementById('cart-items');
+            const cartCount = document.getElementById('cart-count');
+            const cartTotal = document.getElementById('cart-total');
+
+            if (!cartItems || !cartCount || !cartTotal) return;
+
+            cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-500 text-center py-8">Carrinho vazio</p>';
+                cartTotal.textContent = formatPrice(0);
+                return;
+            }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            cartTotal.textContent = formatPrice(total);
+
+            cartItems.innerHTML = cart.map(item => {
+                const itemImageHtml = item.imageUrl 
+                    ? `<img src="${item.imageUrl}" alt="${item.name}" class="w-12 h-12 object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <span class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xl" style="display: none;">${item.image}</span>`
+                    : `<span class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xl">${item.image}</span>`;
+
+                return `
+                    <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                        <div class="flex items-center space-x-3">
+                            ${itemImageHtml}
+                            <div>
+                                <h4 class="font-semibold text-sm">${item.name}</h4>
+                                <p class="text-purple-600 font-semibold text-sm">${formatPrice(item.price)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">-</button>
+                            <span class="w-8 text-center text-sm">${item.quantity}</span>
+                            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">+</button>
+                            <button onclick="removeFromCart(${item.id})" class="ml-2 text-red-500 hover:text-red-700 text-sm">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleCart() {
+            const sidebar = document.getElementById('cart-sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        // WhatsApp Purchase Function
+        async function finalizePurchaseWhatsApp() {
+            if (cart.length === 0) {
+                alert('🛒 Seu carrinho está vazio!');
+                return;
+            }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            let message = `🛍️ *PEDIDO KC PERFUMARIA* 💜\n\n`;
+            
+            message += `📦 *PRODUTOS:*\n`;
+            cart.forEach((item, index) => {
+                message += `${index + 1}. ${item.name}\n`;
+                message += `   Qtd: ${item.quantity}x - ${formatPrice(item.price * item.quantity)}\n\n`;
+            });
+            
+            message += `💰 *TOTAL: ${formatPrice(total)}*\n\n`;
+            message += `Olá! Gostaria de fazer este pedido. Podemos combinar a entrega? 😊`;
+
+            try {
+                // Update stock
+                for (const item of cart) {
+                    const product = products.find(p => p.id === item.id);
+                    if (product) {
+                        product.stock -= item.quantity;
+                        
+                        if (isDbConnected) {
+                            await db.saveProduct(product);
+                        }
+                    }
                 }
-                
-                const newProduct = {
-                    id: productId,
-                    name: form['product-name'].value,
-                    brand: form['product-brand'].value,
-                    category: form['product-category'].value,
-                    price: parseFloat(form['product-price'].value),
-                    stock: parseInt(form['product-stock'].value),
-                    description: form['product-description'].value,
-                    image_url: imageUrl,
+
+                // Record sale
+                const sale = {
+                    id: Date.now(),
+                    items: [...cart],
+                    total: total,
+                    payment_method: 'WhatsApp',
+                    date: new Date().toISOString(),
+                    date_formatted: new Date().toLocaleDateString('pt-BR')
                 };
                 
-                await db.saveProduct(newProduct);
-                db.showDBStatus('✅ Produto adicionado com sucesso!');
-                form.reset();
-                removeProductImage();
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Adicionar Produto';
-            });
-
-            document.getElementById('product-image-input').addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    currentProductImageFile = file;
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const previewImage = document.getElementById('image-preview');
-                        previewImage.src = e.target.result;
-                        document.getElementById('image-preview-container').classList.remove('hidden');
-                        document.getElementById('upload-placeholder').classList.add('hidden');
-                    };
-                    reader.readAsDataURL(file);
+                sales.push(sale);
+                
+                if (isDbConnected) {
+                    await db.saveSale(sale);
                 }
-            });
+                
+                saveToLocalStorage();
+
+                // Open WhatsApp
+                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+
+                // Clear cart and close sidebar
+                cart = [];
+                updateCartDisplay();
+                toggleCart();
+                renderProducts();
+                updateProductGallery();
+
+                alert('🎉 Pedido enviado para o WhatsApp! Estoque atualizado automaticamente.');
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar venda:', error);
+                alert('❌ Erro ao processar venda. Tente novamente.');
+            }
+        }
+
+        // Admin Functions
+        function accessAdmin() {
+            const password = prompt('🔐 Digite a senha de administrador:');
+            
+            if (password === ADMIN_PASSWORD) {
+                const customerView = document.getElementById('customer-view');
+                const adminPanel = document.getElementById('admin-panel');
+                
+                if (customerView && adminPanel) {
+                    customerView.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    adminPanel.classList.remove('admin-panel');
+                    
+                    updateProductGallery();
+                    
+                    // Load logo in admin preview
+                    const savedLogo = localStorage.getItem('kc_logo');
+                    if (savedLogo) {
+                        updateAdminLogoPreview(savedLogo);
+                    }
+                }
+                
+                alert('🎉 Acesso administrativo concedido!');
+                return true;
+            } else if (password !== null) {
+                alert('❌ Senha incorreta! Acesso negado.');
+                return false;
+            }
+            
+            return false;
+        }
+
+        function backToStore() {
+            const customerView = document.getElementById('customer-view');
+            const adminPanel = document.getElementById('admin-panel');
+            
+            if (customerView && adminPanel) {
+                customerView.style.display = 'block';
+                adminPanel.style.display = 'none';
+                adminPanel.classList.add('admin-panel');
+            }
+        }
+
+        // Diagnostic Function
+        async function diagnosticSupabase() {
+            const results = [];
+            
+            try {
+                results.push('🔍 === DIAGNÓSTICO DO SISTEMA ===\n');
+                
+                // Connection test
+                results.push('1️⃣ TESTANDO CONEXÃO...');
+                if (!db.client) {
+                    results.push('❌ Cliente Supabase não inicializado');
+                } else {
+                    results.push('✅ Cliente Supabase inicializado');
+                }
+                
+                // Database test
+                results.push('\n2️⃣ TESTANDO BANCO DE DADOS...');
+                try {
+                    const { data, error } = await db.client
+                        .from('products')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        results.push(`❌ Erro: ${error.message}`);
+                        if (error.message.includes('relation "products" does not exist')) {
+                            results.push('💡 SOLUÇÃO: Execute o SQL de criação das tabelas');
+                        }
+                    } else {
+                        results.push('✅ Tabela products acessível');
+                    }
+                } catch (err) {
+                    results.push(`❌ Erro ao testar tabela: ${err.message}`);
+                }
+                
+                // Product count
+                results.push('\n3️⃣ CONTANDO PRODUTOS...');
+                results.push(`📊 Produtos no sistema: ${products.length}`);
+                results.push(`🔗 Status da conexão: ${isDbConnected ? 'Online' : 'Offline'}`);
+                
+                // Cart status
+                results.push('\n4️⃣ STATUS DO CARRINHO...');
+                results.push(`🛒 Itens no carrinho: ${cart.length}`);
+                
+                // Storage test
+                results.push('\n5️⃣ TESTANDO STORAGE...');
+                try {
+                    const testData = JSON.stringify({ test: true });
+                    localStorage.setItem('kc_test', testData);
+                    const retrieved = localStorage.getItem('kc_test');
+                    localStorage.removeItem('kc_test');
+                    
+                    if (retrieved === testData) {
+                        results.push('✅ localStorage funcionando');
+                    } else {
+                        results.push('❌ Erro no localStorage');
+                    }
+                } catch (err) {
+                    results.push(`❌ Erro no localStorage: ${err.message}`);
+                }
+                
+                results.push('\n🎯 === FIM DO DIAGNÓSTICO ===');
+                
+            } catch (error) {
+                results.push(`❌ ERRO CRÍTICO: ${error.message}`);
+            }
+            
+            const resultText = results.join('\n');
+            console.log(resultText);
+            
+            showModal('🔍 Diagnóstico do Sistema', `<pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto font-mono">${resultText}</pre>`);
+        }
+
+        // Form Submission Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const addProductForm = document.getElementById('add-product-form');
+            if (addProductForm) {
+                addProductForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const name = document.getElementById('product-name').value.trim();
+                    const brand = document.getElementById('product-brand').value;
+                    const category = document.getElementById('product-category').value;
+                    const price = parseFloat(document.getElementById('product-price').value);
+                    const stock = parseInt(document.getElementById('product-stock').value);
+                    const description = document.getElementById('product-description').value.trim();
+
+                    if (!name || !brand || !category || isNaN(price) || isNaN(stock)) {
+                        alert('❌ Por favor, preencha todos os campos obrigatórios!');
+                        return;
+                    }
+
+                    const productId = Date.now();
+                    let imageUrl = null;
+
+                    try {
+                        // Handle image upload
+                        if (currentProductImage) {
+                            if (isDbConnected) {
+                                const fileName = `product_${productId}_${Date.now()}`;
+                                imageUrl = await db.uploadImage(currentProductImage.file, fileName);
+                            }
+                            
+                            if (!imageUrl) {
+                                imageUrl = currentProductImage.dataUrl;
+                            }
+                        }
+
+                        const newProduct = {
+                            id: productId,
+                            name: name,
+                            brand: brand,
+                            category: category,
+                            price: price,
+                            stock: stock,
+                            description: description,
+                            image: getRandomEmoji(),
+                            imageUrl: imageUrl,
+                            image_url: imageUrl,
+                            created_at: new Date().toISOString()
+                        };
+
+                        if (isDbConnected) {
+                            await db.saveProduct(newProduct);
+                        }
+                        
+                        products.push(newProduct);
+                        saveToLocalStorage();
+                        
+                        // Clear form
+                        this.reset();
+                        currentProductImage = null;
+                        
+                        const previewContainer = document.getElementById('image-preview-container');
+                        const uploadPlaceholder = document.getElementById('upload-placeholder');
+                        if (previewContainer && uploadPlaceholder) {
+                            previewContainer.classList.add('hidden');
+                            uploadPlaceholder.classList.remove('hidden');
+                        }
+                        
+                        await loadAndRenderProducts();
+                        
+                        const successMessage = imageUrl 
+                            ? `✅ Produto "${name}" adicionado com foto!`
+                            : `✅ Produto "${name}" adicionado!`;
+                        
+                        alert(successMessage);
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar produto:', error);
+                        alert(`❌ Erro ao salvar produto: ${error.message}`);
+                    }
+                });
+            }
         });
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('🚀 Inicializando KC Perfumaria...');
+                
+                // Initialize arrays
+                products = [];
+                sales = [];
+                cart = [];
+                
+                // Setup image upload
+                setupProductImageUpload();
+                
+                // Try to connect to Supabase
+                const dbConnected = await db.init();
+                isDbConnected = dbConnected;
+                
+                // Load data
+                await loadAndRenderProducts();
+                
+                // Load cart from localStorage
+                loadFromLocalStorage();
+                updateCartDisplay();
+                
+                // Load logo
+                const savedLogo = localStorage.getItem('kc_logo');
+                if (savedLogo) {
+                    updateLogo(savedLogo);
+                    updateAdminLogoPreview(savedLogo);
+                }
+                
+                console.log('✅ KC Perfumaria inicializada com sucesso!');
+                console.log(`📊 ${products.length} produtos carregados`);
+                console.log(`🔗 Modo: ${isDbConnected ? 'Online' : 'Local'}`);
+                
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                
+                // Emergency fallback
+                isDbConnected = false;
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+                updateCartDisplay();
+                
+                console.log('✅ Sistema funcionando em modo local');
+            }
+        });
+
+        // Make functions globally accessible
+        window.accessAdmin = accessAdmin;
+        window.backToStore = backToStore;
+        window.toggleCart = toggleCart;
+        window.addToCart = addToCart;
+        window.removeFromCart = removeFromCart;
+        window.updateQuantity = updateQuantity;
+        window.finalizePurchaseWhatsApp = finalizePurchaseWhatsApp;
+        window.filterByBrand = filterByBrand;
+        window.filterProducts = filterProducts;
+        window.editProduct = editProduct;
+        window.editProductImage = editProductImage;
+        window.deleteProduct = deleteProduct;
+        window.removeProductImage = removeProductImage;
+        window.changeLogo = changeLogo;
+        window.changeLogoAdmin = changeLogoAdmin;
+        window.removeLogoAdmin = removeLogoAdmin;
+        window.diagnosticSupabase = diagnosticSupabase;
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e4251193e5f187',t:'MTc1NTA0NTQ1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
