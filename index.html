@@ -2009,9 +2009,41 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     } else {
                         results.push(`📊 Produtos no banco: ${data ? data.length : 0}`);
                         results.push(`📊 Produtos na memória: ${products.length}`);
+                        
+                        // Verificar produtos com imagens
+                        if (data && data.length > 0) {
+                            const withImages = data.filter(p => p.imageUrl || p.image_url).length;
+                            results.push(`📷 Produtos com fotos: ${withImages}`);
+                        }
                     }
                 } catch (err) {
                     results.push(`❌ Erro na contagem: ${err.message}`);
+                }
+                
+                // 6. Testar sistema de imagens
+                results.push('\n6️⃣ TESTANDO SISTEMA DE IMAGENS...');
+                try {
+                    const { data, error } = await db.client
+                        .from('images')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        results.push(`❌ Erro na tabela images: ${error.message}`);
+                        if (error.message.includes('relation "images" does not exist')) {
+                            results.push('💡 SOLUÇÃO: Tabela images não criada - execute o SQL completo');
+                        }
+                    } else {
+                        results.push('✅ Tabela images acessível');
+                        
+                        // Contar imagens salvas
+                        const { data: imageData } = await db.client
+                            .from('images')
+                            .select('id');
+                        results.push(`📷 Imagens salvas: ${imageData ? imageData.length : 0}`);
+                    }
+                } catch (err) {
+                    results.push(`❌ Erro ao testar imagens: ${err.message}`);
                 }
                 
                 results.push('\n🎯 === FIM DO DIAGNÓSTICO ===');
@@ -2061,5 +2093,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3ec94419ead09',t:'MTc1NTA0MzE0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e3f9b6a04bf1d3',t:'MTc1NTA0MzY3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
