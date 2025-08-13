@@ -24,6 +24,10 @@
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .db-status { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .brand-btn.active, .category-btn.active { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        
+        /* Mobile adjustments for header */
+        .header-logo { flex-shrink: 0; }
+        .header-buttons { flex-shrink: 0; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -33,22 +37,22 @@
 
     <header class="gradient-bg text-white shadow-lg">
         <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer" id="logo-container">
+            <div class="flex justify-between items-center flex-wrap">
+                <div class="flex items-center space-x-3 mb-4 sm:mb-0">
+                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer header-logo" id="logo-container">
                         <img id="logo-image" class="w-full h-full object-cover hidden" alt="KC Perfumaria">
                         <span id="logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold">KC Perfumaria</h1>
-                        <p class="text-purple-200 text-sm">Perfumes e Cosméticos</p>
+                        <h1 class="text-xl sm:text-2xl font-bold">KC Perfumaria</h1>
+                        <p class="text-purple-200 text-sm hidden sm:block">Perfumes e Cosméticos</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                <div class="flex items-center space-x-3 header-buttons">
+                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base">
                         🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
                     </button>
-                    <button id="admin-access-btn" onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                    <button id="admin-access-btn" onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base">
                         ⚙️ <span class="hidden sm:inline">Admin</span>
                     </button>
                 </div>
@@ -103,13 +107,13 @@
 
         <div id="admin-panel" class="admin-panel">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Painel Administrativo</h2>
+                <div class="flex justify-between items-center flex-wrap mb-6">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-0">Painel Administrativo</h2>
                     <div class="flex space-x-2">
-                        <button onclick="diagnosticSupabase()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
+                        <button onclick="diagnosticSupabase()" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-all text-sm">
                             🔍 Diagnóstico
                         </button>
-                        <button onclick="backToStore()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                        <button onclick="backToStore()" class="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-all text-sm">
                             🏪 Voltar para Loja
                         </button>
                     </div>
@@ -118,9 +122,9 @@
                 <div class="max-w-2xl mx-auto mb-8">
                     <h3 class="text-lg font-semibold mb-4">🖼️ Gerenciar Logo da Loja</h3>
                     <div class="bg-gray-50 rounded-lg p-6">
-                        <div class="flex items-center space-x-6">
-                            <div class="flex-shrink-0">
-                                <div class="w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                        <div class="flex items-center flex-wrap sm:flex-nowrap space-y-4 sm:space-y-0 sm:space-x-6">
+                            <div class="flex-shrink-0 w-full sm:w-auto">
+                                <div class="w-full sm:w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
                                     <img id="admin-logo-image" class="w-full h-full object-cover hidden" alt="Logo atual">
                                     <span id="admin-logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
                                 </div>
@@ -129,10 +133,10 @@
                                 <h4 class="font-semibold text-gray-800 mb-2">Logo Atual</h4>
                                 <p class="text-gray-600 text-sm mb-4">Clique no botão abaixo para alterar a logo da sua loja. Recomendamos imagens quadradas ou retangulares.</p>
                                 <div class="flex space-x-3">
-                                    <button onclick="document.getElementById('logo-file-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                    <button onclick="document.getElementById('logo-file-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all text-sm">
                                         📷 Alterar Logo
                                     </button>
-                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all">
+                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all text-sm">
                                         🗑️ Remover Logo
                                     </button>
                                 </div>
@@ -539,19 +543,33 @@
         window.changeLogoAdmin = async (file) => {
             if (!file) return;
             const filePath = `logo/store_logo.png`;
-            const { data: publicUrl, error } = await db.uploadImage(file, filePath);
-            if (error) {
-                db.showDBStatus('❌ Erro ao enviar logo!', 'bg-red-100 text-red-800');
+            
+            // Upload da nova logo
+            const { data: uploadData, error: uploadError } = await db.client.storage.from(db.STORAGE_BUCKET).upload(filePath, file, {
+                upsert: true,
+            });
+
+            if (uploadError) {
+                db.showDBStatus('❌ Erro ao enviar logo! Verifique o console.', 'bg-red-100 text-red-800');
+                console.error('❌ Erro no upload da logo:', uploadError);
                 return;
             }
+
+            // Obter a URL pública da nova logo
+            const { data: publicUrlData } = db.client.storage.from(db.STORAGE_BUCKET).getPublicUrl(filePath);
+            const publicUrl = publicUrlData.publicUrl;
+
+            // Salvar a URL no banco de dados
             if (await db.saveLogoUrl(publicUrl)) {
                 storeConfig.logo_url = publicUrl;
                 renderLogo();
                 renderAdminLogo();
                 db.showDBStatus('✅ Logo atualizado!');
+            } else {
+                db.showDBStatus('❌ Erro ao salvar URL da logo no banco de dados!', 'bg-red-100 text-red-800');
             }
         };
-        
+
         window.removeLogoAdmin = async () => {
             if (confirm('Tem certeza que deseja remover o logo?')) {
                 const filePath = `logo/store_logo.png`;
@@ -573,6 +591,9 @@
         const renderLogo = () => {
             const logoImageEl = document.getElementById('logo-image');
             const logoTextEl = document.getElementById('logo-text');
+            const adminLogoImageEl = document.getElementById('admin-logo-image');
+            const adminLogoTextEl = document.getElementById('admin-logo-text');
+
             if (logoImageEl && logoTextEl) {
                 if (storeConfig.logo_url) {
                     logoImageEl.src = storeConfig.logo_url;
@@ -584,11 +605,7 @@
                     logoTextEl.classList.remove('hidden');
                 }
             }
-        };
-
-        const renderAdminLogo = () => {
-            const adminLogoImageEl = document.getElementById('admin-logo-image');
-            const adminLogoTextEl = document.getElementById('admin-logo-text');
+            // Ensure admin panel logo is also updated
             if (adminLogoImageEl && adminLogoTextEl) {
                 if (storeConfig.logo_url) {
                     adminLogoImageEl.src = storeConfig.logo_url;
@@ -601,7 +618,7 @@
                 }
             }
         };
-
+        
         const renderProducts = () => {
             const productsGrid = document.getElementById('products-grid');
             if (!productsGrid) return;
@@ -711,7 +728,7 @@
             const adminBtn = document.getElementById('admin-access-btn');
             adminBtn.textContent = '🔒 Sair Admin';
             adminBtn.onclick = backToStore;
-            renderAdminLogo();
+            renderLogo(); // Call renderLogo() instead of renderAdminLogo() to ensure both logos are updated
             renderProductGallery();
         };
 
