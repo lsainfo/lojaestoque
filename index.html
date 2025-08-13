@@ -338,9 +338,7 @@
                     
                     console.log('✅ Produto salvo no Supabase:', product.name);
                     this.showStatus('✅ Produto salvo!');
-                    // --- CORREÇÃO: Força o recarregamento após salvar ---
                     await loadAndRenderProducts();
-                    // --- FIM DA CORREÇÃO ---
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao salvar produto:', error);
@@ -360,9 +358,7 @@
                     
                     console.log('✅ Produto excluído do Supabase');
                     this.showStatus('✅ Produto excluído!');
-                    // --- CORREÇÃO: Força o recarregamento após excluir ---
                     await loadAndRenderProducts();
-                    // --- FIM DA CORREÇÃO ---
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao excluir produto:', error);
@@ -891,7 +887,6 @@
                     product.image = getRandomEmoji(); // Reset emoji to a random one
                     product.image_url = imageUrl;
                     await db.saveProduct(product);
-                    loadAndRenderProducts();
                     modal.remove();
                 } else {
                     alert('❌ Erro ao enviar a foto. Tente novamente.');
@@ -906,8 +901,11 @@
                     const fileName = 'product_images/' + product.image_url.split('/').pop();
                     await db.deleteImage(fileName);
                 }
-                // --- CORREÇÃO: A função de exclusão do banco agora força um novo carregamento da lista ---
-                await db.deleteProduct(productId);
+                const success = await db.deleteProduct(productId);
+                // --- CORREÇÃO: Chamada explícita para recarregar a lista após a exclusão ---
+                if (success) {
+                    await loadAndRenderProducts();
+                }
                 // --- FIM DA CORREÇÃO ---
             }
         }
