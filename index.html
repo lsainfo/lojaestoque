@@ -269,7 +269,6 @@
                     console.log('✅ Supabase conectado com sucesso!');
                     this.showStatus('✅ Sistema online', 'bg-green-100 text-green-800');
 
-                    // ========== ALTERAÇÃO AQUI: Sincronização em tempo real ==========
                     this.client
                         .channel('products_changes')
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -277,7 +276,6 @@
                             loadAndRenderProducts(); 
                         })
                         .subscribe();
-                    // =================================================================
 
                     return true;
                 } catch (error) {
@@ -330,7 +328,7 @@
                         stock: parseInt(product.stock),
                         description: product.description || '',
                         image: product.image || '🌸',
-                        image_url: product.imageUrl || null
+                        image_url: product.imageUrl || product.image_url || null
                     };
                     const { data, error } = await this.client
                         .from('products')
@@ -340,6 +338,9 @@
                     
                     console.log('✅ Produto salvo no Supabase:', product.name);
                     this.showStatus('✅ Produto salvo!');
+                    // --- CORREÇÃO: Força o recarregamento após salvar ---
+                    await loadAndRenderProducts();
+                    // --- FIM DA CORREÇÃO ---
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao salvar produto:', error);
@@ -359,6 +360,9 @@
                     
                     console.log('✅ Produto excluído do Supabase');
                     this.showStatus('✅ Produto excluído!');
+                    // --- CORREÇÃO: Força o recarregamento após excluir ---
+                    await loadAndRenderProducts();
+                    // --- FIM DA CORREÇÃO ---
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao excluir produto:', error);
@@ -804,7 +808,6 @@
 
                 const success = await db.saveProduct(product);
                 if (success) {
-                    await loadAndRenderProducts();
                     modal.remove();
                 }
             });
@@ -903,7 +906,9 @@
                     const fileName = 'product_images/' + product.image_url.split('/').pop();
                     await db.deleteImage(fileName);
                 }
+                // --- CORREÇÃO: A função de exclusão do banco agora força um novo carregamento da lista ---
                 await db.deleteProduct(productId);
+                // --- FIM DA CORREÇÃO ---
             }
         }
 
@@ -1111,7 +1116,6 @@
             if (success) {
                 document.getElementById('add-product-form').reset();
                 removeProductImage(new Event('click'));
-                await loadAndRenderProducts();
             } else {
                 alert('❌ Erro ao adicionar o produto. Tente novamente.');
             }
