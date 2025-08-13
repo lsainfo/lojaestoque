@@ -1871,12 +1871,47 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             sessionStorage.removeItem('kc_admin_access');
         }
 
+        // 📷 FUNÇÃO PARA PROCESSAR IMAGEM DE FORMA SÍNCRONA
+        async function saveImageAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    resolve(null);
+                    return;
+                }
+
+                if (file.size > 5 * 1024 * 1024) {
+                    reject(new Error('Arquivo muito grande! O tamanho máximo é 5MB.'));
+                    return;
+                }
+
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('Por favor, selecione apenas arquivos de imagem.'));
+                    return;
+                }
+
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    console.log('✅ Imagem processada com sucesso pelo FileReader');
+                    resolve(e.target.result);
+                };
+                
+                reader.onerror = function(e) {
+                    console.error('❌ Erro no FileReader:', e);
+                    reject(new Error('Erro ao processar a imagem'));
+                };
+                
+                console.log('📷 Iniciando processamento da imagem...');
+                reader.readAsDataURL(file);
+            });
+        }
+
         document.getElementById('add-product-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            console.log('📝 === INICIANDO SALVAMENTO DE PRODUTO ===');
+            console.log('📝 === INICIANDO SALVAMENTO DE PRODUTO (VERSÃO CORRIGIDA) ===');
             
-            // Validar campos obrigatórios primeiro
+            // 🎯 PASSO 1: VALIDAR CAMPOS OBRIGATÓRIOS
             const name = document.getElementById('product-name').value.trim();
             const brand = document.getElementById('product-brand').value;
             const category = document.getElementById('product-category').value;
@@ -1893,39 +1928,48 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log(`📦 Criando produto ID: ${productId} - ${name}`);
 
             try {
-                // 🎯 PASSO 1: SALVAR IMAGEM PRIMEIRO (se existir)
-                let imageUrl = null;
+                // 🎯 PASSO 2: PROCESSAR IMAGEM DE FORMA SÍNCRONA
+                let imageBase64 = null;
                 let imageSaved = false;
                 
-                if (currentProductImage) {
-                    console.log('📷 Salvando imagem do produto...');
+                const imageInput = document.getElementById('product-image-input');
+                const selectedFile = imageInput.files[0];
+                
+                if (selectedFile) {
+                    console.log('📷 Arquivo de imagem detectado, processando...');
                     
-                    if (db.connected) {
-                        try {
-                            const imageSuccess = await db.saveImage(`product_${productId}`, currentProductImage);
-                            if (imageSuccess) {
-                                imageUrl = currentProductImage;
-                                imageSaved = true;
-                                console.log('✅ Imagem salva no Supabase com sucesso');
-                                db.showDBStatus('📷 Imagem salva!', 'bg-blue-100 text-blue-800');
-                            } else {
-                                console.warn('⚠️ Falha ao salvar imagem no Supabase');
+                    // ⭐ AGUARDAR PROCESSAMENTO COMPLETO DA IMAGEM
+                    imageBase64 = await saveImageAsBase64(selectedFile);
+                    
+                    if (imageBase64) {
+                        console.log('✅ Imagem convertida para Base64 com sucesso');
+                        
+                        // Salvar imagem no banco de dados
+                        if (db.connected) {
+                            try {
+                                const imageSuccess = await db.saveImage(`product_${productId}`, imageBase64);
+                                if (imageSuccess) {
+                                    imageSaved = true;
+                                    console.log('✅ Imagem salva no Supabase');
+                                    db.showDBStatus('📷 Imagem salva!', 'bg-blue-100 text-blue-800');
+                                } else {
+                                    console.warn('⚠️ Falha ao salvar imagem no Supabase');
+                                }
+                            } catch (imageError) {
+                                console.error('❌ Erro ao salvar imagem no Supabase:', imageError);
+                                // Continua com a imagem em Base64 mesmo se falhar no Supabase
                             }
-                        } catch (imageError) {
-                            console.error('❌ Erro ao salvar imagem:', imageError);
-                            // Continua sem a imagem se houver erro
+                        } else {
+                            // Se não conectado ao Supabase, considera como salva localmente
+                            imageSaved = true;
+                            console.log('📱 Imagem processada para salvamento local');
                         }
-                    } else {
-                        // Se não conectado ao Supabase, salva localmente
-                        imageUrl = currentProductImage;
-                        imageSaved = true;
-                        console.log('📱 Imagem salva localmente');
                     }
                 } else {
                     console.log('📷 Nenhuma imagem selecionada');
                 }
 
-                // 🎯 PASSO 2: CRIAR OBJETO DO PRODUTO COM IMAGEM
+                // 🎯 PASSO 3: CRIAR OBJETO DO PRODUTO COM IMAGEM PROCESSADA
                 const newProduct = {
                     id: productId,
                     name: name,
@@ -1935,41 +1979,41 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     stock: stock,
                     description: description,
                     image: getRandomEmoji(),
-                    imageUrl: imageUrl, // Incluir URL da imagem salva
-                    image_url: imageUrl, // Campo alternativo para Supabase
+                    imageUrl: imageBase64, // ⭐ IMAGEM JÁ PROCESSADA E PRONTA
+                    image_url: imageBase64, // Campo alternativo para Supabase
                     created_at: new Date().toISOString()
                 };
 
-                console.log('📋 Dados do produto preparados:', {
+                console.log('📋 Produto criado com dados completos:', {
                     id: newProduct.id,
                     name: newProduct.name,
                     hasImage: !!newProduct.imageUrl,
+                    imageSize: newProduct.imageUrl ? `${Math.round(newProduct.imageUrl.length / 1024)}KB` : '0KB',
                     imageSaved: imageSaved
                 });
 
-                // 🎯 PASSO 3: SALVAR PRODUTO NO BANCO
+                // 🎯 PASSO 4: SALVAR PRODUTO COMPLETO NO BANCO
                 if (db.connected) {
-                    console.log('☁️ Salvando produto no Supabase...');
+                    console.log('☁️ Salvando produto completo no Supabase...');
                     const productSuccess = await db.saveProduct(newProduct);
                     
                     if (productSuccess) {
-                        console.log('✅ Produto salvo no Supabase com sucesso');
+                        console.log('✅ Produto com imagem salvo no Supabase');
                         db.showDBStatus('✅ Produto salvo!', 'bg-green-100 text-green-800');
                     } else {
                         throw new Error('Falha ao salvar produto no Supabase');
                     }
                 } else {
-                    console.log('⚠️ Supabase desconectado, salvando apenas localmente');
-                    // Adicionar à lista local
+                    console.log('⚠️ Supabase desconectado, salvando localmente');
                     products.push(newProduct);
                     saveToLocalStorage();
                 }
                 
-                // 🎯 PASSO 4: SINCRONIZAR E ATUALIZAR INTERFACE
-                console.log('🔄 Sincronizando dados...');
+                // 🎯 PASSO 5: SINCRONIZAR E ATUALIZAR INTERFACE
+                console.log('🔄 Recarregando dados do banco...');
                 await loadAndRenderProducts();
                 
-                // 🎯 PASSO 5: LIMPAR FORMULÁRIO
+                // 🎯 PASSO 6: LIMPAR FORMULÁRIO
                 this.reset();
                 currentProductImage = null;
                 
@@ -1985,17 +2029,18 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     imageInput.value = '';
                 }
                 
-                // 🎯 PASSO 6: CONFIRMAÇÃO FINAL
-                const successMessage = imageSaved 
-                    ? `✅ Produto "${name}" adicionado com foto!\n\n📊 Total: ${products.length} produtos\n📷 Imagem salva no banco de dados`
+                // 🎯 PASSO 7: CONFIRMAÇÃO COM STATUS DA IMAGEM
+                const successMessage = imageBase64 
+                    ? `✅ Produto "${name}" adicionado com foto!\n\n📊 Total: ${products.length} produtos\n📷 Imagem salva e sincronizada\n💾 Tamanho: ${Math.round(imageBase64.length / 1024)}KB`
                     : `✅ Produto "${name}" adicionado!\n\n📊 Total: ${products.length} produtos\n📷 Sem imagem anexada`;
                 
-                console.log('🎉 === SALVAMENTO CONCLUÍDO COM SUCESSO ===');
+                console.log('🎉 === SALVAMENTO SINCRONIZADO CONCLUÍDO ===');
                 console.log(`📊 Estado final: ${products.length} produtos`);
+                console.log(`📷 Imagem incluída: ${!!imageBase64}`);
                 alert(successMessage);
                 
             } catch (error) {
-                console.error('❌ === ERRO NO SALVAMENTO ===');
+                console.error('❌ === ERRO NO SALVAMENTO SINCRONIZADO ===');
                 console.error('❌ Detalhes do erro:', error);
                 alert(`❌ Erro ao salvar produto: ${error.message}\n\nTente novamente ou verifique sua conexão.`);
             }
@@ -2213,5 +2258,5 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             console.log('Config form updated');
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e400800468f1d3',t:'MTc1NTA0Mzk1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e40b2aa7045e0f',t:'MTc1NTA0NDM5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
