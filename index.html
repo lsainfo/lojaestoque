@@ -250,7 +250,6 @@
             whatsapp: '5541997786625',
         };
 
-        // Supabase client and database helper object
         let supabaseClient = null;
         const db = {
             client: null,
@@ -400,6 +399,13 @@
             document.getElementById('admin-access-btn').textContent = '⚙️ Admin';
             localStorage.removeItem('adminToken');
             db.showDBStatus('👋 Retornando para a loja.');
+            
+            // Fecha o carrinho se estiver aberto ao sair do admin
+            const cartSidebar = document.getElementById('cart-sidebar');
+            const overlay = document.getElementById('overlay');
+            if (cartSidebar.classList.contains('open')) {
+                toggleCart();
+            }
         };
 
         window.toggleCart = () => {
@@ -563,28 +569,32 @@
         const renderLogo = () => {
             const logoImageEl = document.getElementById('logo-image');
             const logoTextEl = document.getElementById('logo-text');
-            if (storeConfig.logo_url) {
-                logoImageEl.src = storeConfig.logo_url;
-                logoImageEl.classList.remove('hidden');
-                logoTextEl.classList.add('hidden');
-            } else {
-                logoImageEl.src = '';
-                logoImageEl.classList.add('hidden');
-                logoTextEl.classList.remove('hidden');
+            if (logoImageEl && logoTextEl) {
+                if (storeConfig.logo_url) {
+                    logoImageEl.src = storeConfig.logo_url;
+                    logoImageEl.classList.remove('hidden');
+                    logoTextEl.classList.add('hidden');
+                } else {
+                    logoImageEl.src = '';
+                    logoImageEl.classList.add('hidden');
+                    logoTextEl.classList.remove('hidden');
+                }
             }
         };
 
         const renderAdminLogo = () => {
             const adminLogoImageEl = document.getElementById('admin-logo-image');
             const adminLogoTextEl = document.getElementById('admin-logo-text');
-            if (storeConfig.logo_url) {
-                adminLogoImageEl.src = storeConfig.logo_url;
-                adminLogoImageEl.classList.remove('hidden');
-                adminLogoTextEl.classList.add('hidden');
-            } else {
-                adminLogoImageEl.src = '';
-                adminLogoImageEl.classList.add('hidden');
-                adminLogoTextEl.classList.remove('hidden');
+            if (adminLogoImageEl && adminLogoTextEl) {
+                if (storeConfig.logo_url) {
+                    adminLogoImageEl.src = storeConfig.logo_url;
+                    adminLogoImageEl.classList.remove('hidden');
+                    adminLogoTextEl.classList.add('hidden');
+                } else {
+                    adminLogoImageEl.src = '';
+                    adminLogoImageEl.classList.add('hidden');
+                    adminLogoTextEl.classList.remove('hidden');
+                }
             }
         };
 
@@ -694,7 +704,9 @@
             document.getElementById('customer-view').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
             document.getElementById('admin-panel').classList.remove('admin-panel');
-            document.getElementById('admin-access-btn').textContent = '🔒 Sair Admin';
+            const adminBtn = document.getElementById('admin-access-btn');
+            adminBtn.textContent = '🔒 Sair Admin';
+            adminBtn.onclick = backToStore;
             renderAdminLogo();
             renderProductGallery();
         };
@@ -706,7 +718,6 @@
             renderProductGallery();
         };
 
-        // DOM Content Loaded
         document.addEventListener('DOMContentLoaded', async () => {
             const connected = await db.init();
             if (connected) {
@@ -762,6 +773,21 @@
                 removeProductImage();
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Adicionar Produto';
+            });
+
+            document.getElementById('product-image-input').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    currentProductImageFile = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const previewImage = document.getElementById('image-preview');
+                        previewImage.src = e.target.result;
+                        document.getElementById('image-preview-container').classList.remove('hidden');
+                        document.getElementById('upload-placeholder').classList.add('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
             });
         });
     </script>
