@@ -396,11 +396,15 @@
             document.getElementById('customer-view').style.display = 'block';
             document.getElementById('admin-panel').style.display = 'none';
             document.getElementById('admin-panel').classList.add('admin-panel');
-            document.getElementById('admin-access-btn').textContent = '⚙️ Admin';
+            
+            // Reverter a funcionalidade do botão de admin para o estado inicial
+            const adminBtn = document.getElementById('admin-access-btn');
+            adminBtn.textContent = '⚙️ Admin';
+            adminBtn.onclick = accessAdmin;
+            
             localStorage.removeItem('adminToken');
             db.showDBStatus('👋 Retornando para a loja.');
             
-            // Fecha o carrinho se estiver aberto ao sair do admin
             const cartSidebar = document.getElementById('cart-sidebar');
             const overlay = document.getElementById('overlay');
             if (cartSidebar.classList.contains('open')) {
