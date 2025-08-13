@@ -23,12 +23,14 @@
         .loading { opacity: 0.6; pointer-events: none; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .db-status { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; border-radius: 0.5rem; max-width: 28rem; width: 100%; padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body class="bg-gray-50">
     <!-- Database Status Indicator -->
     <div id="db-status" class="db-status bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hidden">
-        ✅ Dados salvos!
+        ✅ Sistema conectado
     </div>
 
     <!-- Header -->
@@ -239,97 +241,66 @@
     <!-- Overlay -->
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleCart()"></div>
 
-    <!-- Hidden file input for import -->
-    <input type="file" id="import-file-input" accept=".json" class="hidden">
-
     <script>
-        // Sistema integrado com Supabase
-        // Configuração do banco de dados
+        // Configuration
         const SUPABASE_URL = 'https://udyihngwyqhfhdxkxwso.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkeWlobmd3eXFoZmhkeGt4d3NvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NTcwOTUsImV4cCI6MjA3MDQzMzA5NX0.MA3RgucTM7akkqxF1Zgl4aLtGBFAUT48IKfXez8ZK3c';
+        const ADMIN_PASSWORD = 'kc0310';
+        const WHATSAPP_NUMBER = '5541997786625';
 
         // Global Variables
+        let supabaseClient = null;
         let products = [];
         let cart = [];
         let sales = [];
         let currentFilter = 'todos';
         let currentBrand = 'todas';
         let currentProductImage = null;
+        let isDbConnected = false;
 
-        // Make functions globally accessible
-        window.accessAdmin = accessAdmin;
-        window.toggleCart = toggleCart;
-        window.addToCart = addToCart;
-        window.removeFromCart = removeFromCart;
-        window.updateQuantity = updateQuantity;
-        window.finalizePurchaseWhatsApp = finalizePurchaseWhatsApp;
-        window.filterByBrand = filterByBrand;
-        window.filterProducts = filterProducts;
-        window.backToStore = backToStore;
-        window.editProduct = editProduct;
-        window.editProductImage = editProductImage;
-        window.deleteProduct = deleteProduct;
-        window.removeProductImage = removeProductImage;
-        window.changeLogo = changeLogo;
-        window.changeLogoAdmin = changeLogoAdmin;
-        window.removeLogoAdmin = removeLogoAdmin;
-        window.diagnosticSupabase = diagnosticSupabase;
-
-        // Database connection
-        let supabaseClient = null;
-
-        // Database management system
+        // Database Management System
         const db = {
             client: null,
             connected: false,
 
             async init() {
                 try {
-                    console.log('🔌 Conectando ao Supabase...');
+                    console.log('🔌 Inicializando conexão com Supabase...');
                     this.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     
-                    // Test connection with a simple query
+                    // Test connection
                     const { data, error } = await this.client
                         .from('products')
                         .select('id')
                         .limit(1);
                     
                     if (error) {
-                        console.error('❌ Erro na conexão:', error.message);
-                        console.error('❌ Detalhes do erro:', error);
-                        
-                        // Verificar se é erro de tabela não existente
-                        if (error.message.includes('relation "products" does not exist')) {
-                            this.showDBStatus('❌ Tabelas não criadas', 'bg-yellow-100 text-yellow-800');
-                            console.log('💡 Execute o SQL de criação das tabelas no Supabase');
-                        } else {
-                            this.showDBStatus('❌ Erro na conexão', 'bg-red-100 text-red-800');
-                        }
-                        
+                        console.error('❌ Erro na conexão:', error);
                         this.connected = false;
+                        this.showStatus('❌ Banco offline - modo local', 'bg-yellow-100 text-yellow-800');
                         return false;
                     }
                     
                     this.connected = true;
-                    console.log('✅ Banco de dados conectado!');
-                    this.showDBStatus('✅ Sistema conectado', 'bg-green-100 text-green-800');
+                    isDbConnected = true;
+                    console.log('✅ Supabase conectado com sucesso!');
+                    this.showStatus('✅ Sistema online', 'bg-green-100 text-green-800');
                     return true;
                 } catch (error) {
-                    console.error('❌ Erro ao inicializar Supabase:', error.message);
+                    console.error('❌ Erro ao inicializar Supabase:', error);
                     this.connected = false;
-                    this.showDBStatus('❌ Erro na inicialização', 'bg-red-100 text-red-800');
+                    this.showStatus('❌ Erro de conexão', 'bg-red-100 text-red-800');
                     return false;
                 }
             },
 
-            showDBStatus(message, className = 'bg-green-100 text-green-800') {
+            showStatus(message, className = 'bg-green-100 text-green-800') {
                 const statusEl = document.getElementById('db-status');
                 if (statusEl) {
                     statusEl.textContent = message;
                     statusEl.className = `db-status px-3 py-1 rounded-full text-sm font-medium ${className}`;
                     statusEl.classList.remove('hidden');
                     
-                    // Auto hide after 3 seconds
                     setTimeout(() => {
                         statusEl.classList.add('hidden');
                     }, 3000);
@@ -347,7 +318,7 @@
                     
                     if (error) throw error;
                     
-                    console.log(`📦 ${data.length} produtos carregados do banco`);
+                    console.log(`📦 ${data?.length || 0} produtos carregados do Supabase`);
                     return data || [];
                 } catch (error) {
                     console.error('❌ Erro ao carregar produtos:', error);
@@ -359,7 +330,6 @@
                 if (!this.connected) return false;
                 
                 try {
-                    // Preparar dados para o Supabase (remover campos que podem causar conflito)
                     const productData = {
                         id: product.id,
                         name: product.name,
@@ -372,52 +342,19 @@
                         image_url: product.imageUrl || null
                     };
                     
-                    console.log('💾 Salvando produto:', productData);
-                    
                     const { data, error } = await this.client
                         .from('products')
-                        .upsert(productData, { 
-                            onConflict: 'id',
-                            ignoreDuplicates: false 
-                        })
+                        .upsert(productData, { onConflict: 'id' })
                         .select();
                     
-                    if (error) {
-                        console.error('❌ Erro detalhado do Supabase:', error);
-                        throw error;
-                    }
+                    if (error) throw error;
                     
-                    console.log('✅ Produto salvo no Supabase:', productData.name);
+                    console.log('✅ Produto salvo no Supabase:', product.name);
+                    this.showStatus('✅ Produto salvo!');
                     return true;
                 } catch (error) {
-                    console.error('❌ Erro ao salvar produto:', error.message);
-                    
-                    // Tentar inserção simples se upsert falhar
-                    try {
-                        const simpleData = {
-                            id: product.id,
-                            name: product.name,
-                            brand: product.brand,
-                            category: product.category,
-                            price: parseFloat(product.price),
-                            stock: parseInt(product.stock),
-                            description: product.description || '',
-                            image: product.image || '🌸'
-                        };
-                        
-                        const { data, error } = await this.client
-                            .from('products')
-                            .insert(simpleData)
-                            .select();
-                        
-                        if (error) throw error;
-                        
-                        console.log('✅ Produto inserido no Supabase (fallback):', simpleData.name);
-                        return true;
-                    } catch (fallbackError) {
-                        console.error('❌ Erro no fallback:', fallbackError.message);
-                        return false;
-                    }
+                    console.error('❌ Erro ao salvar produto:', error);
+                    return false;
                 }
             },
 
@@ -432,7 +369,8 @@
                     
                     if (error) throw error;
                     
-                    console.log('✅ Produto excluído do Supabase:', productId);
+                    console.log('✅ Produto excluído do Supabase');
+                    this.showStatus('✅ Produto excluído!');
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao excluir produto:', error);
@@ -440,22 +378,46 @@
                 }
             },
 
-            async loadSales() {
-                if (!this.connected) return [];
+            async uploadImage(file, fileName) {
+                if (!this.connected) return null;
                 
                 try {
-                    const { data, error } = await this.client
-                        .from('sales')
-                        .select('*')
-                        .order('date', { ascending: false });
+                    const { data, error } = await this.client.storage
+                        .from('product_images')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                        });
                     
                     if (error) throw error;
                     
-                    console.log(`💰 ${data.length} vendas carregadas do Supabase`);
-                    return data || [];
+                    const { data: urlData } = this.client.storage
+                        .from('product_images')
+                        .getPublicUrl(fileName);
+                    
+                    console.log('✅ Imagem enviada para Supabase Storage');
+                    return urlData.publicUrl;
                 } catch (error) {
-                    console.error('❌ Erro ao carregar vendas:', error);
-                    return [];
+                    console.error('❌ Erro ao enviar imagem:', error);
+                    return null;
+                }
+            },
+
+            async deleteImage(fileName) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { error } = await this.client.storage
+                        .from('product_images')
+                        .remove([fileName]);
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Imagem excluída do Storage');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao excluir imagem:', error);
+                    return false;
                 }
             },
 
@@ -470,732 +432,53 @@
                     
                     if (error) throw error;
                     
-                    console.log('✅ Venda salva no Supabase:', sale.id);
+                    console.log('✅ Venda salva no Supabase');
+                    this.showStatus('✅ Venda registrada!');
                     return true;
                 } catch (error) {
                     console.error('❌ Erro ao salvar venda:', error);
                     return false;
                 }
-            },
-
-            async saveImage(imageId, imageData) {
-                if (!this.connected) return false;
-                
-                try {
-                    const { data, error } = await this.client
-                        .from('images')
-                        .upsert({
-                            id: imageId,
-                            data: imageData
-                        })
-                        .select();
-                    
-                    if (error) throw error;
-                    
-                    console.log('✅ Imagem salva no Supabase:', imageId);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao salvar imagem:', error);
-                    return false;
-                }
-            },
-
-            async getImage(imageId) {
-                if (!this.connected) return null;
-                
-                try {
-                    const { data, error } = await this.client
-                        .from('images')
-                        .select('data')
-                        .eq('id', imageId)
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    return data?.data || null;
-                } catch (error) {
-                    console.error('❌ Erro ao carregar imagem:', error);
-                    return null;
-                }
-            },
-
-            async deleteImage(imageId) {
-                if (!this.connected) return false;
-                
-                try {
-                    const { error } = await this.client
-                        .from('images')
-                        .delete()
-                        .eq('id', imageId);
-                    
-                    if (error) throw error;
-                    
-                    console.log('✅ Imagem excluída do Supabase:', imageId);
-                    return true;
-                } catch (error) {
-                    console.error('❌ Erro ao excluir imagem:', error);
-                    return false;
-                }
             }
         };
 
-        // Configurações da KC Perfumaria
-        let STORE_CONFIG = {
-            name: 'KC PERFUMARIA',
-            ownerName: 'KELLY CRISTINE',
-            document: '123.456.789-00',
-            city: 'PARANAGUA',
-            state: 'PR',
-            pixKey: '41997786625',
-            pixKeyType: 'phone',
-            whatsapp: '5541997786625',
-            bankAccount: {
-                bank: 'Banco do Brasil',
-                agency: '1234-5',
-                account: '12345-6',
-                accountType: 'Conta Corrente'
-            },
-            discounts: {
-                pix: 0.05,
-                cash: 0.03,
-                debit: 0.02
-            },
-            installments: {
-                maxInstallments: 3,
-                minAmountPerInstallment: 30.00
-            }
-        };
-
-        // Admin access function
-        function accessAdmin() {
-            const password = prompt('🔐 Digite a senha de administrador:');
-            
-            if (password === 'kc0310') {
-                // Switch to admin view with complete element control
-                const customerView = document.getElementById('customer-view');
-                const adminPanel = document.getElementById('admin-panel');
-                
-                if (customerView && adminPanel) {
-                    // SOLUÇÃO ROBUSTA: Ocultar completamente a visualização da loja
-                    customerView.style.display = 'none';
-                    customerView.style.visibility = 'hidden';
-                    customerView.style.pointerEvents = 'none';
-                    customerView.style.position = 'absolute';
-                    customerView.style.left = '-9999px';
-                    customerView.style.zIndex = '-1';
-                    
-                    // SOLUÇÃO ROBUSTA: Exibir e ativar completamente o painel admin
-                    adminPanel.style.display = 'block';
-                    adminPanel.style.visibility = 'visible';
-                    adminPanel.style.pointerEvents = 'auto';
-                    adminPanel.style.position = 'relative';
-                    adminPanel.style.left = 'auto';
-                    adminPanel.style.zIndex = '999';
-                    adminPanel.classList.remove('admin-panel');
-                    
-                    updateProductGallery();
-                    console.log('🔄 Visualização alternada: Loja → Admin');
-                }
-                
-                alert('🎉 Acesso administrativo concedido!');
-                console.log('🔑 Acesso administrativo concedido!');
-                return true;
-            } else if (password !== null) {
-                alert('❌ Senha incorreta! Acesso negado.');
-                return false;
-            }
-            
-            return false;
+        // Utility Functions
+        function getRandomEmoji() {
+            const emojis = ['🌸', '💄', '🧴', '✨', '💎', '🌺', '🎀', '💋', '🌷', '🦋'];
+            return emojis[Math.floor(Math.random() * emojis.length)];
         }
 
-        // Check for admin access
-        function checkAdminAccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const adminParam = urlParams.get('admin');
-            
-            if (adminParam === 'kc0310') {
-                // Store admin access in session
-                sessionStorage.setItem('kc_admin_access', 'kc0310');
-                
-                // Automatically switch to admin view with complete element control
-                setTimeout(() => {
-                    const customerView = document.getElementById('customer-view');
-                    const adminPanel = document.getElementById('admin-panel');
-                    
-                    if (customerView && adminPanel) {
-                        // SOLUÇÃO ROBUSTA: Ocultar completamente a visualização da loja
-                        customerView.style.display = 'none';
-                        customerView.style.visibility = 'hidden';
-                        customerView.style.pointerEvents = 'none';
-                        customerView.style.position = 'absolute';
-                        customerView.style.left = '-9999px';
-                        customerView.style.zIndex = '-1';
-                        
-                        // SOLUÇÃO ROBUSTA: Exibir e ativar completamente o painel admin
-                        adminPanel.style.display = 'block';
-                        adminPanel.style.visibility = 'visible';
-                        adminPanel.style.pointerEvents = 'auto';
-                        adminPanel.style.position = 'relative';
-                        adminPanel.style.left = 'auto';
-                        adminPanel.style.zIndex = '999';
-                        adminPanel.classList.remove('admin-panel');
-                        
-                        updateProductGallery();
-                        console.log('🔄 Acesso automático: Loja → Admin');
-                    }
-                }, 100);
-                
-                console.log('🔑 Acesso administrativo concedido! Painel admin ativado automaticamente.');
-                return true;
-            }
-            
-            return false;
+        function formatPrice(price) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(price);
         }
 
-        // Tutorial de Hospedagem no Supabase
-        function showSupabaseHostingTutorial() {
-            const tutorial = `
-🚀 TUTORIAL COMPLETO: HOSPEDAGEM NO SUPABASE
-
-📋 PASSO A PASSO DETALHADO:
-
-═══════════════════════════════════════════════════════════════
-
-1️⃣ PREPARAR O CÓDIGO:
-   • Baixe o código preparado clicando em "Baixar Código Preparado"
-   • Extraia o arquivo ZIP
-   • Você terá os arquivos: index.html, database.js, style.css
-
-2️⃣ CRIAR CONTA NO SUPABASE:
-   • Acesse: https://supabase.com
-   • Clique em "Start your project"
-   • Faça login com GitHub (recomendado) ou email
-
-3️⃣ CRIAR NOVO PROJETO:
-   • Clique em "New Project"
-   • Nome do projeto: "kc-perfumaria"
-   • Senha do banco: (crie uma senha forte e anote!)
-   • Região: South America (São Paulo)
-   • Clique em "Create new project"
-   • ⏱️ Aguarde 2-3 minutos para criação
-
-4️⃣ CONFIGURAR BANCO DE DADOS:
-   • No menu lateral: SQL Editor
-   • Clique em "New query"
-   • Cole o código SQL abaixo:
-
--- CÓDIGO SQL (COPIE E COLE):
-CREATE TABLE products (
-    id BIGINT PRIMARY KEY,
-    name TEXT NOT NULL,
-    brand TEXT NOT NULL,
-    category TEXT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    stock INTEGER NOT NULL DEFAULT 0,
-    description TEXT,
-    image TEXT,
-    image_url TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE sales (
-    id BIGINT PRIMARY KEY,
-    items JSONB NOT NULL,
-    total DECIMAL(10,2) NOT NULL,
-    payment_method TEXT,
-    date TIMESTAMP DEFAULT NOW(),
-    date_formatted TEXT
-);
-
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE images (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Habilitar RLS
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE images ENABLE ROW LEVEL SECURITY;
-
--- Políticas de acesso
-CREATE POLICY "Allow all operations" ON products FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON sales FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON settings FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);
-
-   • Clique em "Run" (botão azul)
-   • Deve aparecer "Success. No rows returned"
-
-5️⃣ OBTER CREDENCIAIS:
-   • No menu lateral: Settings → API
-   • Copie a "URL" (https://xxx.supabase.co)
-   • Copie a "anon public" key (chave longa)
-
-6️⃣ CONFIGURAR O CÓDIGO:
-   • Abra o arquivo "database.js" baixado
-   • Encontre as linhas:
-     const SUPABASE_URL = 'SUA_URL_AQUI'
-     const SUPABASE_KEY = 'SUA_CHAVE_AQUI'
-   • Substitua pelos valores copiados do Supabase
-
-7️⃣ HOSPEDAR NO SUPABASE:
-   • No painel do Supabase: Storage → Create bucket
-   • Nome do bucket: "website"
-   • Público: ✅ Sim
-   • Clique em "Create bucket"
-   
-   • Clique no bucket "website"
-   • Clique em "Upload file"
-   • Selecione todos os arquivos (index.html, database.js, style.css)
-   • Clique em "Upload"
-
-8️⃣ CONFIGURAR HOSPEDAGEM:
-   • Clique no arquivo "index.html" enviado
-   • Clique em "Copy URL"
-   • Sua loja estará disponível nesta URL!
-
-9️⃣ DOMÍNIO PERSONALIZADO (OPCIONAL):
-   • No painel: Settings → Custom domains
-   • Adicione seu domínio personalizado
-   • Configure DNS conforme instruções
-
-🎉 PRONTO! SUA LOJA ESTÁ NO AR!
-
-═══════════════════════════════════════════════════════════════
-
-💡 VANTAGENS DA HOSPEDAGEM SUPABASE:
-
-✅ GRATUITO até 500MB de armazenamento
-✅ HTTPS automático (SSL)
-✅ Banco de dados PostgreSQL na nuvem
-✅ Backup automático
-✅ CDN global (carregamento rápido)
-✅ Domínio personalizado
-✅ Escalabilidade automática
-✅ Painel administrativo completo
-
-📊 RECURSOS INCLUÍDOS:
-
-🛍️ Loja online completa
-📦 Gestão de produtos e estoque
-💰 Relatórios de vendas
-📱 WhatsApp integrado
-🎨 Upload de imagens
-📊 Dashboard administrativo
-📱 Design responsivo
-🔒 Dados seguros na nuvem
-
-🆘 SUPORTE:
-
-• Documentação: https://supabase.com/docs
-• Comunidade: https://github.com/supabase/supabase/discussions
-• Discord: https://discord.supabase.com
-
-═══════════════════════════════════════════════════════════════
-
-🚀 DICA EXTRA: ATUALIZAÇÕES
-
-Para atualizar sua loja:
-1. Modifique os arquivos localmente
-2. Faça upload novamente no Storage
-3. Substitua os arquivos existentes
-4. As mudanças aparecem instantaneamente!
-
-═══════════════════════════════════════════════════════════════
-            `;
-            
-            // Create modal with tutorial
+        function showModal(title, content, buttons = []) {
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="bg-white rounded-lg max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-2xl font-bold text-blue-800">🚀 Tutorial Hospedagem Supabase</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                        </div>
-                        <pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto font-mono">${tutorial}</pre>
-                        <div class="mt-6 flex justify-end space-x-2">
-                            <button onclick="navigator.clipboard.writeText(\`${tutorial}\`).then(() => alert('📋 Tutorial copiado!'))" 
-                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
-                                📋 Copiar Tutorial
-                            </button>
-                            <button onclick="window.open('https://supabase.com', '_blank')" 
-                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all">
-                                🌐 Abrir Supabase
-                            </button>
-                            <button onclick="downloadForSupabase()" 
-                                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
-                                📥 Baixar Código
-                            </button>
-                            <button onclick="this.closest('.fixed').remove()" 
-                                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all">
-                                Fechar
-                            </button>
-                        </div>
+                <div class="modal-content">
+                    <h3 class="text-lg font-bold mb-4">${title}</h3>
+                    <div class="mb-6">${content}</div>
+                    <div class="flex justify-end space-x-2">
+                        ${buttons.map(btn => `<button onclick="${btn.action}" class="${btn.class}">${btn.text}</button>`).join('')}
+                        <button onclick="this.closest('.modal-overlay').remove()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-all">Fechar</button>
                     </div>
                 </div>
             `;
-            
             document.body.appendChild(modal);
+            return modal;
         }
 
-        function downloadForSupabase() {
-            // Criar os arquivos preparados para Supabase
-            const htmlContent = document.documentElement.outerHTML;
-            
-            // Criar arquivo ZIP simulado (na verdade será um HTML com instruções)
-            const downloadContent = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KC Perfumaria - Preparado para Supabase</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .alert { background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .code { background: #f5f5f5; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
-        .step { background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #4caf50; }
-    </style>
-</head>
-<body>
-    <h1>🚀 KC Perfumaria - Código Preparado para Supabase</h1>
-    
-    <div class="alert">
-        <strong>📋 INSTRUÇÕES:</strong><br>
-        Este arquivo contém sua loja KC Perfumaria preparada para hospedagem no Supabase.<br>
-        Siga os passos abaixo para colocar sua loja online!
-    </div>
-
-    <div class="step">
-        <h3>1️⃣ Salvar este arquivo</h3>
-        <p>Salve este arquivo como <strong>"index.html"</strong> no seu computador.</p>
-    </div>
-
-    <div class="step">
-        <h3>2️⃣ Criar conta no Supabase</h3>
-        <p>Acesse <a href="https://supabase.com" target="_blank">https://supabase.com</a> e crie sua conta gratuita.</p>
-    </div>
-
-    <div class="step">
-        <h3>3️⃣ Criar projeto</h3>
-        <p>Crie um novo projeto chamado "kc-perfumaria" na região South America.</p>
-    </div>
-
-    <div class="step">
-        <h3>4️⃣ Configurar banco de dados</h3>
-        <p>No SQL Editor do Supabase, execute este código:</p>
-        <div class="code">-- Tabela de produtos
-CREATE TABLE products (
-    id BIGINT PRIMARY KEY,
-    name TEXT NOT NULL,
-    brand TEXT NOT NULL,
-    category TEXT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    stock INTEGER NOT NULL DEFAULT 0,
-    description TEXT,
-    image TEXT,
-    image_url TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Tabela de vendas
-CREATE TABLE sales (
-    id BIGINT PRIMARY KEY,
-    items JSONB NOT NULL,
-    total DECIMAL(10,2) NOT NULL,
-    payment_method TEXT,
-    date TIMESTAMP DEFAULT NOW(),
-    date_formatted TEXT
-);
-
--- Tabela de configurações
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Tabela de imagens
-CREATE TABLE images (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Habilitar RLS
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE images ENABLE ROW LEVEL SECURITY;
-
--- Políticas de acesso
-CREATE POLICY "Allow all operations" ON products FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON sales FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON settings FOR ALL USING (true);
-CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
-    </div>
-
-    <div class="step">
-        <h3>5️⃣ Hospedar arquivo</h3>
-        <p>No Storage do Supabase:</p>
-        <ul>
-            <li>Crie um bucket público chamado "website"</li>
-            <li>Faça upload deste arquivo index.html</li>
-            <li>Copie a URL pública</li>
-            <li>Sua loja estará online!</li>
-        </ul>
-    </div>
-
-    <div class="alert">
-        <strong>🎉 PRONTO!</strong><br>
-        Sua KC Perfumaria estará online com banco de dados na nuvem, totalmente gratuito!
-    </div>
-
-    <hr style="margin: 40px 0;">
-    
-    <!-- Aqui começa o código da loja -->
-    ${htmlContent}
-</body>
-</html>
-            `;
-            
-            // Download do arquivo
-            const blob = new Blob([downloadContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'kc-perfumaria-supabase.html';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            alert('📥 Arquivo baixado!\n\n✅ Sua loja foi preparada para hospedagem no Supabase.\n\n📋 Siga as instruções no arquivo baixado para colocar sua loja online!');
-        }
-
-        // 🚀 INICIALIZAÇÃO DA APLICAÇÃO
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                console.log('🚀 === INICIALIZANDO KC PERFUMARIA ===');
-                
-                // Inicializar arrays
-                products = [];
-                sales = [];
-                cart = [];
-                
-                // Verificar acesso admin
-                checkAdminAccess();
-                
-                // Configurar upload de imagens
-                setupProductImageUpload();
-                
-                // Tentar conectar ao Supabase (opcional)
-                console.log('🔌 Tentando conectar ao banco de dados...');
-                try {
-                    const dbConnected = await db.init();
-                    if (dbConnected) {
-                        console.log('✅ Banco conectado! Carregando dados...');
-                        await loadAndRenderProducts();
-                        
-                        // Carregar vendas
-                        const supabaseSales = await db.loadSales();
-                        if (supabaseSales && supabaseSales.length > 0) {
-                            sales = supabaseSales;
-                            console.log(`💰 ${sales.length} vendas carregadas`);
-                        }
-                        
-                        // Carregar logo
-                        await loadLogo();
-                    } else {
-                        throw new Error('Falha na conexão');
-                    }
-                } catch (dbError) {
-                    console.log('⚠️ Banco indisponível, usando modo local...');
-                    db.connected = false;
-                    
-                    // Carregar dados locais
-                    loadFromLocalStorage();
-                    renderProducts();
-                    updateProductGallery();
-                    
-                    // Carregar logo local
-                    const localLogo = localStorage.getItem('kc_logo');
-                    if (localLogo) {
-                        updateLogo(localLogo);
-                        updateAdminLogoPreview(localLogo);
-                    }
-                }
-                
-                console.log('🎉 === INICIALIZAÇÃO CONCLUÍDA ===');
-                console.log(`📊 Estado final: ${products.length} produtos, ${sales.length} vendas`);
-                console.log(`🔗 Modo: ${db.connected ? 'Online (Supabase)' : 'Local (localStorage)'}`);
-                
-            } catch (error) {
-                console.error('❌ Erro crítico na inicialização:', error);
-                
-                // Fallback de emergência - modo totalmente local
-                console.log('🆘 Ativando modo de emergência...');
-                db.connected = false;
-                products = [];
-                sales = [];
-                cart = [];
-                
-                setupProductImageUpload();
-                renderProducts();
-                updateProductGallery();
-                
-                console.log('✅ Sistema funcionando em modo local de emergência');
-            }
-        });
-
-        // Função para carregar logo
-        async function loadLogo() {
-            try {
-                // Tentar carregar do Supabase primeiro
-                if (db.connected) {
-                    const logoData = await db.getImage('logo');
-                    if (logoData) {
-                        updateLogo(logoData);
-                        updateAdminLogoPreview(logoData);
-                        console.log('🖼️ Logo carregada do Supabase');
-                        return;
-                    }
-                }
-                
-                // Fallback para localStorage
-                const localLogo = localStorage.getItem('kc_logo');
-                if (localLogo) {
-                    updateLogo(localLogo);
-                    updateAdminLogoPreview(localLogo);
-                    console.log('🖼️ Logo carregada do localStorage');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar logo:', error);
-            }
-        }
-
-        // 🔄 FUNÇÃO CENTRAL DE SINCRONIZAÇÃO COM CARREGAMENTO DE IMAGENS
-        async function loadAndRenderProducts() {
-            try {
-                console.log('🔄 === SINCRONIZAÇÃO CENTRAL INICIADA ===');
-                
-                // Limpar interface primeiro
-                const grid = document.getElementById('products-grid');
-                const gallery = document.getElementById('product-gallery');
-                
-                if (grid) grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Carregando produtos...</div>';
-                if (gallery) gallery.innerHTML = '<div class="col-span-full text-center py-4 text-gray-500">Carregando...</div>';
-                
-                // Carregar dados do Supabase (fonte principal)
-                if (db.connected) {
-                    console.log('☁️ Carregando produtos do Supabase...');
-                    const supabaseProducts = await db.loadProducts();
-                    
-                    if (supabaseProducts && supabaseProducts.length > 0) {
-                        products = supabaseProducts;
-                        console.log(`✅ ${products.length} produtos carregados do Supabase`);
-                        
-                        // 🎯 CARREGAR IMAGENS DOS PRODUTOS
-                        console.log('📷 Carregando imagens dos produtos...');
-                        await loadProductImages();
-                        
-                        // Salvar no localStorage como backup
-                        saveToLocalStorage();
-                    } else {
-                        console.log('⚠️ Nenhum produto no Supabase, tentando localStorage...');
-                        loadFromLocalStorage();
-                    }
-                } else {
-                    console.log('⚠️ Supabase desconectado, carregando do localStorage...');
-                    loadFromLocalStorage();
-                }
-                
-                // Renderizar interface
-                renderProducts();
-                updateProductGallery();
-                
-                console.log(`🎉 Sincronização concluída: ${products.length} produtos exibidos`);
-                
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-                
-                // Fallback para localStorage
-                loadFromLocalStorage();
-                renderProducts();
-                updateProductGallery();
-            }
-        }
-
-        // 📷 FUNÇÃO PARA CARREGAR IMAGENS DOS PRODUTOS
-        async function loadProductImages() {
-            if (!db.connected) return;
-            
-            let imagesLoaded = 0;
-            
-            for (const product of products) {
-                try {
-                    // Verificar se produto já tem imageUrl
-                    if (product.imageUrl || product.image_url) {
-                        imagesLoaded++;
-                        continue;
-                    }
-                    
-                    // Tentar carregar imagem da tabela images
-                    const imageData = await db.getImage(`product_${product.id}`);
-                    if (imageData) {
-                        product.imageUrl = imageData;
-                        product.image_url = imageData;
-                        imagesLoaded++;
-                        console.log(`📷 Imagem carregada para produto: ${product.name}`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠️ Erro ao carregar imagem do produto ${product.id}:`, error);
-                }
-            }
-            
-            console.log(`📷 ${imagesLoaded} produtos com imagens carregadas`);
-        }
-
-        // Função simplificada para carregar do localStorage
-        function loadFromLocalStorage() {
-            try {
-                const savedProducts = localStorage.getItem('kc_products');
-                if (savedProducts) {
-                    const parsed = JSON.parse(savedProducts);
-                    if (Array.isArray(parsed)) {
-                        products = parsed;
-                        console.log(`📱 ${products.length} produtos carregados do localStorage`);
-                        return;
-                    }
-                }
-                
-                // Se não encontrou, inicializar vazio
-                products = [];
-                console.log('📱 Inicializando com lista vazia');
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar localStorage:', error);
-                products = [];
-            }
-        }
-
-        // Função simplificada para salvar no localStorage
+        // Local Storage Functions
         function saveToLocalStorage() {
             try {
                 localStorage.setItem('kc_products', JSON.stringify(products));
                 localStorage.setItem('kc_sales', JSON.stringify(sales));
-                console.log(`💾 ${products.length} produtos salvos no localStorage`);
+                localStorage.setItem('kc_cart', JSON.stringify(cart));
+                console.log('💾 Dados salvos no localStorage');
                 return true;
             } catch (error) {
                 console.error('❌ Erro ao salvar no localStorage:', error);
@@ -1203,41 +486,40 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             }
         }
 
-        // Clean old backup files
-        function cleanOldBackups() {
+        function loadFromLocalStorage() {
             try {
-                const keys = Object.keys(localStorage);
-                const backupKeys = keys.filter(key => key.startsWith('kc_backup_')).sort();
+                const savedProducts = localStorage.getItem('kc_products');
+                const savedSales = localStorage.getItem('kc_sales');
+                const savedCart = localStorage.getItem('kc_cart');
                 
-                // Keep only the 5 most recent backups
-                if (backupKeys.length > 5) {
-                    const toDelete = backupKeys.slice(0, backupKeys.length - 5);
-                    toDelete.forEach(key => {
-                        localStorage.removeItem(key);
-                    });
-                    console.log(`🧹 Limpeza: ${toDelete.length} backups antigos removidos`);
+                if (savedProducts) {
+                    products = JSON.parse(savedProducts);
+                    console.log(`📱 ${products.length} produtos carregados do localStorage`);
                 }
+                
+                if (savedSales) {
+                    sales = JSON.parse(savedSales);
+                    console.log(`💰 ${sales.length} vendas carregadas do localStorage`);
+                }
+                
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                    console.log(`🛒 ${cart.length} itens carregados no carrinho`);
+                }
+                
+                return true;
             } catch (error) {
-                console.warn('⚠️ Erro na limpeza de backups:', error);
+                console.error('❌ Erro ao carregar do localStorage:', error);
+                return false;
             }
         }
 
-        // Initialize with empty data - admin will add products
-        async function initializeDefaultDataSupabase() {
-            products = [];
-            console.log('✅ Loja inicializada vazia - pronta para cadastro de produtos!');
-        }
-
-        // Initialize default data (localStorage fallback)
-        function initializeDefaultData() {
-            products = [];
-            saveDataToStorage();
-        }
-
-        // Product Image Upload Functions
+        // Image Handling Functions
         function setupProductImageUpload() {
             const imageInput = document.getElementById('product-image-input');
             const uploadArea = document.getElementById('product-image-upload');
+            
+            if (!imageInput || !uploadArea) return;
             
             imageInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
@@ -1269,19 +551,22 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
 
         function handleProductImageFile(file) {
             if (file.size > 5 * 1024 * 1024) {
-                alert('Arquivo muito grande! O tamanho máximo é 5MB.');
+                alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
                 return;
             }
 
             if (!file.type.startsWith('image/')) {
-                alert('Por favor, selecione apenas arquivos de imagem.');
+                alert('❌ Por favor, selecione apenas arquivos de imagem.');
                 return;
             }
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                currentProductImage = e.target.result;
-                showImagePreview(currentProductImage);
+                currentProductImage = {
+                    file: file,
+                    dataUrl: e.target.result
+                };
+                showImagePreview(e.target.result);
             };
             reader.readAsDataURL(file);
         }
@@ -1291,9 +576,11 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const uploadPlaceholder = document.getElementById('upload-placeholder');
             const imagePreview = document.getElementById('image-preview');
 
-            imagePreview.src = imageData;
-            previewContainer.classList.remove('hidden');
-            uploadPlaceholder.classList.add('hidden');
+            if (previewContainer && uploadPlaceholder && imagePreview) {
+                imagePreview.src = imageData;
+                previewContainer.classList.remove('hidden');
+                uploadPlaceholder.classList.add('hidden');
+            }
         }
 
         function removeProductImage(event) {
@@ -1304,12 +591,15 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const imageInput = document.getElementById('product-image-input');
 
             currentProductImage = null;
-            previewContainer.classList.add('hidden');
-            uploadPlaceholder.classList.remove('hidden');
-            imageInput.value = '';
+            
+            if (previewContainer && uploadPlaceholder && imageInput) {
+                previewContainer.classList.add('hidden');
+                uploadPlaceholder.classList.remove('hidden');
+                imageInput.value = '';
+            }
         }
 
-        // Logo Management
+        // Logo Management Functions
         function changeLogo() {
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
@@ -1319,25 +609,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 const file = e.target.files[0];
                 if (file) {
                     if (file.size > 2 * 1024 * 1024) {
-                        alert('Arquivo muito grande! O tamanho máximo é 2MB.');
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
                         return;
                     }
 
                     const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        const logoImage = document.getElementById('logo-image');
-                        const logoText = document.getElementById('logo-text');
-                        
-                        logoImage.src = e.target.result;
-                        logoImage.classList.remove('hidden');
-                        logoText.classList.add('hidden');
-                        
-                        // Salvar no banco de dados
-                        if (db.connected) {
-                            await db.saveImage('logo', e.target.result);
-                            db.showDBStatus('✅ Logo salva!');
-                        }
-                        
+                    reader.onload = function(e) {
+                        updateLogo(e.target.result);
+                        localStorage.setItem('kc_logo', e.target.result);
                         alert('✅ Logo atualizada com sucesso!');
                     };
                     reader.readAsDataURL(file);
@@ -1347,7 +626,6 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             fileInput.click();
         }
 
-        // Admin Logo Management Functions
         function changeLogoAdmin() {
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
@@ -1361,40 +639,13 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         return;
                     }
 
-                    if (!file.type.startsWith('image/')) {
-                        alert('❌ Por favor, selecione apenas arquivos de imagem (PNG, JPG, GIF).');
-                        return;
-                    }
-
                     const reader = new FileReader();
-                    reader.onload = async function(e) {
+                    reader.onload = function(e) {
                         const logoData = e.target.result;
-                        
-                        // Update header logo
                         updateLogo(logoData);
-                        
-                        // Update admin preview
                         updateAdminLogoPreview(logoData);
-                        
-                        // Save to database
-                        if (db.connected) {
-                            try {
-                                await db.saveImage('logo', logoData);
-                                db.showDBStatus('✅ Logo salva no banco!');
-                                console.log('✅ Logo salva no Supabase');
-                            } catch (error) {
-                                console.error('❌ Erro ao salvar logo:', error);
-                            }
-                        }
-                        
-                        // Save to localStorage as fallback
-                        try {
-                            localStorage.setItem('kc_logo', logoData);
-                        } catch (error) {
-                            console.error('❌ Erro ao salvar logo no localStorage:', error);
-                        }
-                        
-                        alert('✅ Logo atualizada com sucesso!\n\n🔄 A nova logo já está visível no cabeçalho da loja.');
+                        localStorage.setItem('kc_logo', logoData);
+                        alert('✅ Logo atualizada com sucesso!');
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1404,39 +655,11 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
         }
 
         function removeLogoAdmin() {
-            if (confirm('🗑️ Tem certeza que deseja remover a logo?\n\nA logo padrão "KC" será exibida.')) {
-                // Remove from header
-                const logoImage = document.getElementById('logo-image');
-                const logoText = document.getElementById('logo-text');
-                
-                logoImage.classList.add('hidden');
-                logoText.classList.remove('hidden');
-                
-                // Remove from admin preview
-                const adminLogoImage = document.getElementById('admin-logo-image');
-                const adminLogoText = document.getElementById('admin-logo-text');
-                
-                adminLogoImage.classList.add('hidden');
-                adminLogoText.classList.remove('hidden');
-                
-                // Remove from database
-                if (db.connected) {
-                    db.deleteImage('logo').then(() => {
-                        db.showDBStatus('✅ Logo removida do banco!');
-                        console.log('✅ Logo removida do Supabase');
-                    }).catch(error => {
-                        console.error('❌ Erro ao remover logo:', error);
-                    });
-                }
-                
-                // Remove from localStorage
-                try {
-                    localStorage.removeItem('kc_logo');
-                } catch (error) {
-                    console.error('❌ Erro ao remover logo do localStorage:', error);
-                }
-                
-                alert('✅ Logo removida com sucesso!\n\n🔄 A logo padrão "KC" está sendo exibida.');
+            if (confirm('🗑️ Tem certeza que deseja remover a logo?')) {
+                updateLogo(null);
+                updateAdminLogoPreview(null);
+                localStorage.removeItem('kc_logo');
+                alert('✅ Logo removida com sucesso!');
             }
         }
 
@@ -1444,13 +667,15 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const logoImage = document.getElementById('logo-image');
             const logoText = document.getElementById('logo-text');
             
-            if (logoData) {
-                logoImage.src = logoData;
-                logoImage.classList.remove('hidden');
-                logoText.classList.add('hidden');
-            } else {
-                logoImage.classList.add('hidden');
-                logoText.classList.remove('hidden');
+            if (logoImage && logoText) {
+                if (logoData) {
+                    logoImage.src = logoData;
+                    logoImage.classList.remove('hidden');
+                    logoText.classList.add('hidden');
+                } else {
+                    logoImage.classList.add('hidden');
+                    logoText.classList.remove('hidden');
+                }
             }
         }
 
@@ -1458,19 +683,51 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const adminLogoImage = document.getElementById('admin-logo-image');
             const adminLogoText = document.getElementById('admin-logo-text');
             
-            if (logoData) {
-                adminLogoImage.src = logoData;
-                adminLogoImage.classList.remove('hidden');
-                adminLogoText.classList.add('hidden');
-            } else {
-                adminLogoImage.classList.add('hidden');
-                adminLogoText.classList.remove('hidden');
+            if (adminLogoImage && adminLogoText) {
+                if (logoData) {
+                    adminLogoImage.src = logoData;
+                    adminLogoImage.classList.remove('hidden');
+                    adminLogoText.classList.add('hidden');
+                } else {
+                    adminLogoImage.classList.add('hidden');
+                    adminLogoText.classList.remove('hidden');
+                }
             }
         }
 
-        // 🎨 RENDERIZAÇÃO DE PRODUTOS (apenas interface)
+        // Product Management Functions
+        async function loadAndRenderProducts() {
+            try {
+                console.log('🔄 Carregando produtos...');
+                
+                if (isDbConnected) {
+                    const supabaseProducts = await db.loadProducts();
+                    if (supabaseProducts && supabaseProducts.length > 0) {
+                        products = supabaseProducts;
+                        console.log(`✅ ${products.length} produtos carregados do Supabase`);
+                        saveToLocalStorage();
+                    } else {
+                        loadFromLocalStorage();
+                    }
+                } else {
+                    loadFromLocalStorage();
+                }
+                
+                renderProducts();
+                updateProductGallery();
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar produtos:', error);
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+            }
+        }
+
         function renderProducts() {
             const grid = document.getElementById('products-grid');
+            if (!grid) return;
+            
             let filteredProducts = products;
 
             if (currentBrand !== 'todas') {
@@ -1488,9 +745,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 'natura': '🍃 Natura'
             };
 
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto encontrado</div>';
+                return;
+            }
+
             grid.innerHTML = filteredProducts.map(product => {
-                const productImageHtml = product.imageUrl 
-                    ? `<img src="${product.imageUrl}" alt="${product.name}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                        <div class="product-image-placeholder" style="display: none;">${product.image}</div>`
                     : `<div class="product-image-placeholder">${product.image}</div>`;
 
@@ -1500,11 +762,11 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                             ${productImageHtml}
                         </div>
                         <div class="p-6">
-                            <div class="text-xs text-purple-600 font-semibold mb-2 text-center">${brandNames[product.brand]}</div>
-                            <h3 class="font-semibold text-lg mb-2">${product.name}</h3>
-                            <p class="text-gray-600 text-sm mb-3">${product.description}</p>
+                            <div class="text-xs text-purple-600 font-semibold mb-2 text-center">${brandNames[product.brand] || product.brand}</div>
+                            <h3 class="font-semibold text-lg mb-2 line-clamp-2">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${product.description || ''}</p>
                             <div class="flex justify-between items-center mb-4">
-                                <span class="text-2xl font-bold text-purple-600">R$ ${product.price.toFixed(2)}</span>
+                                <span class="text-2xl font-bold text-purple-600">${formatPrice(product.price)}</span>
                                 <span class="text-sm text-gray-500">Estoque: ${product.stock}</span>
                             </div>
                             <button onclick="addToCart(${product.id})" 
@@ -1523,6 +785,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
 
         function updateProductGallery() {
             const gallery = document.getElementById('product-gallery');
+            if (!gallery) return;
             
             const brandNames = {
                 'boticario': '🌿 Boticário',
@@ -1531,18 +794,23 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 'natura': '🍃 Natura'
             };
 
+            if (products.length === 0) {
+                gallery.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto cadastrado</div>';
+                return;
+            }
+
             gallery.innerHTML = products.map(product => {
-                const productImageHtml = product.imageUrl 
-                    ? `<img src="${product.imageUrl}" alt="${product.name}" class="w-full h-32 object-cover rounded-lg mb-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="w-full h-32 object-cover rounded-lg mb-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                        <div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2" style="display: none;">${product.image}</div>`
                     : `<div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2">${product.image}</div>`;
 
                 return `
                     <div class="bg-gray-50 rounded-lg p-4">
                         ${productImageHtml}
-                        <div class="text-xs text-purple-600 font-medium mb-1">${brandNames[product.brand]}</div>
-                        <h4 class="font-semibold text-sm mb-1">${product.name}</h4>
-                        <p class="text-xs text-gray-600 mb-2">R$ ${product.price.toFixed(2)}</p>
+                        <div class="text-xs text-purple-600 font-medium mb-1">${brandNames[product.brand] || product.brand}</div>
+                        <h4 class="font-semibold text-sm mb-1 line-clamp-2">${product.name}</h4>
+                        <p class="text-xs text-gray-600 mb-2">${formatPrice(product.price)} | Estoque: ${product.stock}</p>
                         <div class="flex space-x-1">
                             <button onclick="editProduct(${product.id})" class="flex-1 bg-green-100 text-green-600 text-xs py-1 px-2 rounded hover:bg-green-200 transition-all">
                                 ✏️ Editar
@@ -1563,18 +831,10 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
-            const brandNames = {
-                'boticario': '🌿 Boticário',
-                'mary-kay': '💎 Mary Kay',
-                'eudora': '✨ Eudora',
-                'natura': '🍃 Natura'
-            };
-
-            // Create edit modal
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="modal-content">
                     <h3 class="text-lg font-bold mb-4">✏️ Editar Produto</h3>
                     <form id="edit-product-form">
                         <input type="text" id="edit-name" value="${product.name}" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
@@ -1596,13 +856,13 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         
                         <input type="number" id="edit-stock" value="${product.stock}" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
                         
-                        <textarea id="edit-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-20 focus:ring-2 focus:ring-purple-500">${product.description}</textarea>
+                        <textarea id="edit-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-20 focus:ring-2 focus:ring-purple-500">${product.description || ''}</textarea>
                         
                         <div class="flex space-x-2">
                             <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-all">
                                 ✅ Salvar
                             </button>
-                            <button type="button" onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all">
+                            <button type="button" onclick="this.closest('.modal-overlay').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all">
                                 ❌ Cancelar
                             </button>
                         </div>
@@ -1612,11 +872,9 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
 
             document.body.appendChild(modal);
 
-            // Handle form submission
             document.getElementById('edit-product-form').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                // Update product data
                 product.name = document.getElementById('edit-name').value;
                 product.brand = document.getElementById('edit-brand').value;
                 product.category = document.getElementById('edit-category').value;
@@ -1624,16 +882,12 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 product.stock = parseInt(document.getElementById('edit-stock').value);
                 product.description = document.getElementById('edit-description').value;
                 
-                // Salvar no Supabase
-                if (db.connected) {
+                if (isDbConnected) {
                     await db.saveProduct(product);
-                    db.showDBStatus('✅ Produto atualizado!');
                 }
                 
-                // 🎯 SINCRONIZAR: Recarregar dados do banco
+                saveToLocalStorage();
                 await loadAndRenderProducts();
-                
-                // Close modal
                 modal.remove();
                 
                 alert('✅ Produto atualizado com sucesso!');
@@ -1648,29 +902,55 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             fileInput.type = 'file';
             fileInput.accept = 'image/*';
             
-            fileInput.onchange = function(e) {
+            fileInput.onchange = async function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     if (file.size > 5 * 1024 * 1024) {
-                        alert('Arquivo muito grande! O tamanho máximo é 5MB.');
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
                         return;
                     }
 
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        product.imageUrl = e.target.result;
+                    try {
+                        let imageUrl = null;
                         
-                        // Salvar no banco de dados
-                        if (db.connected) {
-                            await db.saveProduct(product);
-                            await db.saveImage(`product_${product.id}`, e.target.result);
+                        if (isDbConnected) {
+                            const fileName = `product_${product.id}_${Date.now()}`;
+                            imageUrl = await db.uploadImage(file, fileName);
                         }
                         
-                        // 🎯 SINCRONIZAR: Recarregar dados do banco
-                        await loadAndRenderProducts();
-                        alert('✅ Foto do produto atualizada e salva no banco!');
-                    };
-                    reader.readAsDataURL(file);
+                        if (!imageUrl) {
+                            // Fallback to base64
+                            const reader = new FileReader();
+                            reader.onload = async function(e) {
+                                product.imageUrl = e.target.result;
+                                product.image_url = e.target.result;
+                                
+                                if (isDbConnected) {
+                                    await db.saveProduct(product);
+                                }
+                                
+                                saveToLocalStorage();
+                                await loadAndRenderProducts();
+                                alert('✅ Foto do produto atualizada!');
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            product.imageUrl = imageUrl;
+                            product.image_url = imageUrl;
+                            
+                            if (isDbConnected) {
+                                await db.saveProduct(product);
+                            }
+                            
+                            saveToLocalStorage();
+                            await loadAndRenderProducts();
+                            alert('✅ Foto do produto atualizada!');
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao atualizar imagem:', error);
+                        alert('❌ Erro ao atualizar imagem. Tente novamente.');
+                    }
                 }
             };
             
@@ -1678,16 +958,21 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
         }
 
         async function deleteProduct(productId) {
-            if (confirm('Tem certeza que deseja excluir este produto?')) {
+            if (confirm('🗑️ Tem certeza que deseja excluir este produto?')) {
                 try {
-                    // Remover do banco de dados primeiro
-                    if (db.connected) {
+                    if (isDbConnected) {
                         await db.deleteProduct(productId);
-                        await db.deleteImage(`product_${productId}`);
-                        console.log('✅ Produto excluído do Supabase');
+                        
+                        // Delete image if exists
+                        const product = products.find(p => p.id === productId);
+                        if (product && product.imageUrl && product.imageUrl.includes('supabase')) {
+                            const fileName = product.imageUrl.split('/').pop();
+                            await db.deleteImage(fileName);
+                        }
                     }
                     
-                    // 🎯 SINCRONIZAR: Recarregar dados do banco
+                    products = products.filter(p => p.id !== productId);
+                    saveToLocalStorage();
                     await loadAndRenderProducts();
                     
                     alert('✅ Produto excluído com sucesso!');
@@ -1699,6 +984,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             }
         }
 
+        // Filter Functions
         function filterByBrand(brand) {
             currentBrand = brand;
             
@@ -1706,6 +992,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 btn.classList.remove('active', 'bg-purple-600', 'text-white');
                 btn.classList.add('bg-gray-200', 'text-gray-700');
             });
+            
             event.target.classList.add('active', 'bg-purple-600', 'text-white');
             event.target.classList.remove('bg-gray-200', 'text-gray-700');
             
@@ -1719,13 +1006,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 btn.classList.remove('active', 'bg-indigo-600', 'text-white');
                 btn.classList.add('bg-gray-200', 'text-gray-700');
             });
+            
             event.target.classList.add('active', 'bg-indigo-600', 'text-white');
             event.target.classList.remove('bg-gray-200', 'text-gray-700');
             
             renderProducts();
         }
 
-        // Cart Management
+        // Cart Management Functions
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product || product.stock === 0) return;
@@ -1742,16 +1030,18 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     price: product.price,
                     quantity: 1,
                     image: product.image,
-                    imageUrl: product.imageUrl
+                    imageUrl: product.imageUrl || product.image_url
                 });
             }
             
             updateCartDisplay();
+            saveToLocalStorage();
         }
 
         function removeFromCart(productId) {
             cart = cart.filter(item => item.id !== productId);
             updateCartDisplay();
+            saveToLocalStorage();
         }
 
         function updateQuantity(productId, change) {
@@ -1764,9 +1054,11 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     item.quantity = newQuantity;
                 } else if (newQuantity <= 0) {
                     removeFromCart(productId);
+                    return;
                 }
             }
             updateCartDisplay();
+            saveToLocalStorage();
         }
 
         function updateCartDisplay() {
@@ -1774,16 +1066,18 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const cartCount = document.getElementById('cart-count');
             const cartTotal = document.getElementById('cart-total');
 
+            if (!cartItems || !cartCount || !cartTotal) return;
+
             cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
 
             if (cart.length === 0) {
                 cartItems.innerHTML = '<p class="text-gray-500 text-center py-8">Carrinho vazio</p>';
-                cartTotal.textContent = 'R$ 0,00';
+                cartTotal.textContent = formatPrice(0);
                 return;
             }
 
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            cartTotal.textContent = `R$ ${total.toFixed(2)}`;
+            cartTotal.textContent = formatPrice(total);
 
             cartItems.innerHTML = cart.map(item => {
                 const itemImageHtml = item.imageUrl 
@@ -1796,15 +1090,15 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         <div class="flex items-center space-x-3">
                             ${itemImageHtml}
                             <div>
-                                <h4 class="font-semibold">${item.name}</h4>
-                                <p class="text-purple-600 font-semibold">R$ ${item.price.toFixed(2)}</p>
+                                <h4 class="font-semibold text-sm">${item.name}</h4>
+                                <p class="text-purple-600 font-semibold text-sm">${formatPrice(item.price)}</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300">-</button>
-                            <span class="w-8 text-center">${item.quantity}</span>
-                            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300">+</button>
-                            <button onclick="removeFromCart(${item.id})" class="ml-2 text-red-500 hover:text-red-700">🗑️</button>
+                            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">-</button>
+                            <span class="w-8 text-center text-sm">${item.quantity}</span>
+                            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">+</button>
+                            <button onclick="removeFromCart(${item.id})" class="ml-2 text-red-500 hover:text-red-700 text-sm">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -1815,14 +1109,16 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             const sidebar = document.getElementById('cart-sidebar');
             const overlay = document.getElementById('overlay');
             
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('hidden');
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('hidden');
+            }
         }
 
         // WhatsApp Purchase Function
         async function finalizePurchaseWhatsApp() {
             if (cart.length === 0) {
-                alert('Seu carrinho está vazio!');
+                alert('🛒 Seu carrinho está vazio!');
                 return;
             }
 
@@ -1833,10 +1129,10 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
             message += `📦 *PRODUTOS:*\n`;
             cart.forEach((item, index) => {
                 message += `${index + 1}. ${item.name}\n`;
-                message += `   Qtd: ${item.quantity}x - R$ ${(item.price * item.quantity).toFixed(2)}\n\n`;
+                message += `   Qtd: ${item.quantity}x - ${formatPrice(item.price * item.quantity)}\n\n`;
             });
             
-            message += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n\n`;
+            message += `💰 *TOTAL: ${formatPrice(total)}*\n\n`;
             message += `Olá! Gostaria de fazer este pedido. Podemos combinar a entrega? 😊`;
 
             try {
@@ -1846,8 +1142,7 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     if (product) {
                         product.stock -= item.quantity;
                         
-                        // Update in Supabase
-                        if (db.connected) {
+                        if (isDbConnected) {
                             await db.saveProduct(product);
                         }
                     }
@@ -1865,22 +1160,14 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 
                 sales.push(sale);
                 
-                // Save to Supabase
-                if (db.connected) {
-                    try {
-                        await db.saveSale(sale);
-                        db.showDBStatus('✅ Venda registrada no Supabase!');
-                        console.log('✅ Venda salva no Supabase:', sale.id);
-                    } catch (error) {
-                        console.error('❌ Erro ao salvar venda no Supabase:', error);
-                    }
+                if (isDbConnected) {
+                    await db.saveSale(sale);
                 }
                 
-                // Save to localStorage
-                saveDataToStorage();
+                saveToLocalStorage();
 
                 // Open WhatsApp
-                const whatsappUrl = `https://wa.me/${STORE_CONFIG.whatsapp}?text=${encodeURIComponent(message)}`;
+                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
                 window.open(whatsappUrl, '_blank');
 
                 // Clear cart and close sidebar
@@ -1888,209 +1175,76 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                 updateCartDisplay();
                 toggleCart();
                 renderProducts();
-                updateStockList();
-                updateSalesReport();
+                updateProductGallery();
 
-                // Show success message
                 alert('🎉 Pedido enviado para o WhatsApp! Estoque atualizado automaticamente.');
                 
             } catch (error) {
                 console.error('❌ Erro ao processar venda:', error);
-                // Error message removed - process continues silently
+                alert('❌ Erro ao processar venda. Tente novamente.');
             }
         }
 
         // Admin Functions
+        function accessAdmin() {
+            const password = prompt('🔐 Digite a senha de administrador:');
+            
+            if (password === ADMIN_PASSWORD) {
+                const customerView = document.getElementById('customer-view');
+                const adminPanel = document.getElementById('admin-panel');
+                
+                if (customerView && adminPanel) {
+                    customerView.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    adminPanel.classList.remove('admin-panel');
+                    
+                    updateProductGallery();
+                    
+                    // Load logo in admin preview
+                    const savedLogo = localStorage.getItem('kc_logo');
+                    if (savedLogo) {
+                        updateAdminLogoPreview(savedLogo);
+                    }
+                }
+                
+                alert('🎉 Acesso administrativo concedido!');
+                return true;
+            } else if (password !== null) {
+                alert('❌ Senha incorreta! Acesso negado.');
+                return false;
+            }
+            
+            return false;
+        }
+
         function backToStore() {
             const customerView = document.getElementById('customer-view');
             const adminPanel = document.getElementById('admin-panel');
             
             if (customerView && adminPanel) {
-                // SOLUÇÃO ROBUSTA: Exibir e ativar completamente a visualização da loja
                 customerView.style.display = 'block';
-                customerView.style.visibility = 'visible';
-                customerView.style.pointerEvents = 'auto';
-                customerView.style.position = 'relative';
-                customerView.style.left = 'auto';
-                customerView.style.zIndex = '1';
-                
-                // SOLUÇÃO ROBUSTA: Ocultar completamente o painel admin
                 adminPanel.style.display = 'none';
-                adminPanel.style.visibility = 'hidden';
-                adminPanel.style.pointerEvents = 'none';
-                adminPanel.style.position = 'absolute';
-                adminPanel.style.left = '-9999px';
-                adminPanel.style.zIndex = '-1';
                 adminPanel.classList.add('admin-panel');
-                
-                console.log('🔄 Visualização alternada: Admin → Loja');
             }
-            
-            // Remove admin parameter from URL without reloading page
-            const url = new URL(window.location);
-            url.searchParams.delete('admin');
-            window.history.replaceState({}, document.title, url.pathname + url.search);
-            
-            // Clear admin session
-            sessionStorage.removeItem('kc_admin_access');
         }
 
-        // 📷 FUNÇÃO PARA PROCESSAR IMAGEM DE FORMA SÍNCRONA
-        async function saveImageAsBase64(file) {
-            return new Promise((resolve, reject) => {
-                if (!file) {
-                    resolve(null);
-                    return;
-                }
-
-                if (file.size > 5 * 1024 * 1024) {
-                    reject(new Error('Arquivo muito grande! O tamanho máximo é 5MB.'));
-                    return;
-                }
-
-                if (!file.type.startsWith('image/')) {
-                    reject(new Error('Por favor, selecione apenas arquivos de imagem.'));
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    console.log('✅ Imagem processada com sucesso pelo FileReader');
-                    resolve(e.target.result);
-                };
-                
-                reader.onerror = function(e) {
-                    console.error('❌ Erro no FileReader:', e);
-                    reject(new Error('Erro ao processar a imagem'));
-                };
-                
-                console.log('📷 Iniciando processamento da imagem...');
-                reader.readAsDataURL(file);
-            });
-        }
-
-        document.getElementById('add-product-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            console.log('📝 === SALVANDO PRODUTO ===');
-            
-            // Validar campos obrigatórios
-            const name = document.getElementById('product-name').value.trim();
-            const brand = document.getElementById('product-brand').value;
-            const category = document.getElementById('product-category').value;
-            const price = parseFloat(document.getElementById('product-price').value);
-            const stock = parseInt(document.getElementById('product-stock').value);
-            const description = document.getElementById('product-description').value.trim();
-
-            if (!name || !brand || !category || isNaN(price) || isNaN(stock)) {
-                alert('❌ Por favor, preencha todos os campos obrigatórios!');
-                return;
-            }
-
-            const productId = Date.now();
-            console.log(`📦 Criando produto: ${name}`);
-
-            try {
-                // Processar imagem se houver
-                let imageBase64 = null;
-                const imageInput = document.getElementById('product-image-input');
-                const selectedFile = imageInput.files[0];
-                
-                if (selectedFile) {
-                    console.log('📷 Processando imagem...');
-                    imageBase64 = await saveImageAsBase64(selectedFile);
-                    console.log('✅ Imagem processada');
-                }
-
-                // Criar produto
-                const newProduct = {
-                    id: productId,
-                    name: name,
-                    brand: brand,
-                    category: category,
-                    price: price,
-                    stock: stock,
-                    description: description,
-                    image: getRandomEmoji(),
-                    imageUrl: imageBase64,
-                    image_url: imageBase64,
-                    created_at: new Date().toISOString()
-                };
-
-                // Salvar produto
-                if (db.connected) {
-                    console.log('☁️ Salvando no Supabase...');
-                    const success = await db.saveProduct(newProduct);
-                    if (success && imageBase64) {
-                        await db.saveImage(`product_${productId}`, imageBase64);
-                    }
-                    if (success) {
-                        db.showDBStatus('✅ Produto salvo!');
-                        await loadAndRenderProducts();
-                    } else {
-                        throw new Error('Falha ao salvar no Supabase');
-                    }
-                } else {
-                    console.log('📱 Salvando localmente...');
-                    products.push(newProduct);
-                    saveToLocalStorage();
-                    renderProducts();
-                    updateProductGallery();
-                }
-                
-                // Limpar formulário
-                this.reset();
-                currentProductImage = null;
-                
-                const previewContainer = document.getElementById('image-preview-container');
-                const uploadPlaceholder = document.getElementById('upload-placeholder');
-                if (previewContainer && uploadPlaceholder) {
-                    previewContainer.classList.add('hidden');
-                    uploadPlaceholder.classList.remove('hidden');
-                }
-                
-                document.getElementById('product-image-input').value = '';
-                
-                // Confirmação
-                const successMessage = imageBase64 
-                    ? `✅ Produto "${name}" adicionado com foto!`
-                    : `✅ Produto "${name}" adicionado!`;
-                
-                console.log('🎉 Produto salvo com sucesso');
-                alert(successMessage);
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar produto:', error);
-                alert(`❌ Erro ao salvar produto: ${error.message}`);
-            }
-        });
-
-        function getRandomEmoji() {
-            const emojis = ['🌸', '💄', '🧴', '✨', '💎', '🌺', '🎀', '💋', '🌷', '🦋'];
-            return emojis[Math.floor(Math.random() * emojis.length)];
-        }
-
-        // Simplified admin functions - only product management
-
-        // Função de diagnóstico do Supabase
+        // Diagnostic Function
         async function diagnosticSupabase() {
             const results = [];
             
             try {
-                results.push('🔍 === DIAGNÓSTICO DO SUPABASE ===\n');
+                results.push('🔍 === DIAGNÓSTICO DO SISTEMA ===\n');
                 
-                // 1. Verificar conexão
+                // Connection test
                 results.push('1️⃣ TESTANDO CONEXÃO...');
                 if (!db.client) {
                     results.push('❌ Cliente Supabase não inicializado');
-                    results.push('💡 Recarregue a página para tentar novamente\n');
                 } else {
                     results.push('✅ Cliente Supabase inicializado');
                 }
                 
-                // 2. Testar tabela products
-                results.push('\n2️⃣ TESTANDO TABELA PRODUCTS...');
+                // Database test
+                results.push('\n2️⃣ TESTANDO BANCO DE DADOS...');
                 try {
                     const { data, error } = await db.client
                         .from('products')
@@ -2098,11 +1252,9 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                         .limit(1);
                     
                     if (error) {
-                        results.push(`❌ Erro na tabela products: ${error.message}`);
+                        results.push(`❌ Erro: ${error.message}`);
                         if (error.message.includes('relation "products" does not exist')) {
-                            results.push('💡 SOLUÇÃO: Execute o SQL de criação das tabelas no Supabase');
-                            results.push('   - Acesse: SQL Editor no painel do Supabase');
-                            results.push('   - Execute o código SQL fornecido no tutorial');
+                            results.push('💡 SOLUÇÃO: Execute o SQL de criação das tabelas');
                         }
                     } else {
                         results.push('✅ Tabela products acessível');
@@ -2111,172 +1263,194 @@ CREATE POLICY "Allow all operations" ON images FOR ALL USING (true);</div>
                     results.push(`❌ Erro ao testar tabela: ${err.message}`);
                 }
                 
-                // 3. Testar inserção
-                results.push('\n3️⃣ TESTANDO INSERÇÃO...');
+                // Product count
+                results.push('\n3️⃣ CONTANDO PRODUTOS...');
+                results.push(`📊 Produtos no sistema: ${products.length}`);
+                results.push(`🔗 Status da conexão: ${isDbConnected ? 'Online' : 'Offline'}`);
+                
+                // Cart status
+                results.push('\n4️⃣ STATUS DO CARRINHO...');
+                results.push(`🛒 Itens no carrinho: ${cart.length}`);
+                
+                // Storage test
+                results.push('\n5️⃣ TESTANDO STORAGE...');
                 try {
-                    const testProduct = {
-                        id: 999999999,
-                        name: 'TESTE DIAGNÓSTICO',
-                        brand: 'boticario',
-                        category: 'perfumes',
-                        price: 1.00,
-                        stock: 1,
-                        description: 'Produto de teste',
-                        image: '🧪'
-                    };
+                    const testData = JSON.stringify({ test: true });
+                    localStorage.setItem('kc_test', testData);
+                    const retrieved = localStorage.getItem('kc_test');
+                    localStorage.removeItem('kc_test');
                     
-                    const { data, error } = await db.client
-                        .from('products')
-                        .insert(testProduct)
-                        .select();
-                    
-                    if (error) {
-                        results.push(`❌ Erro na inserção: ${error.message}`);
-                        results.push(`💡 Detalhes: ${JSON.stringify(error, null, 2)}`);
+                    if (retrieved === testData) {
+                        results.push('✅ localStorage funcionando');
                     } else {
-                        results.push('✅ Inserção funcionando');
-                        
-                        // Limpar produto de teste
-                        await db.client.from('products').delete().eq('id', 999999999);
-                        results.push('🧹 Produto de teste removido');
+                        results.push('❌ Erro no localStorage');
                     }
                 } catch (err) {
-                    results.push(`❌ Erro no teste de inserção: ${err.message}`);
-                }
-                
-                // 4. Verificar configurações
-                results.push('\n4️⃣ VERIFICANDO CONFIGURAÇÕES...');
-                results.push(`📍 URL: ${SUPABASE_URL}`);
-                results.push(`🔑 Key: ${SUPABASE_KEY.substring(0, 20)}...`);
-                results.push(`🔗 Status: ${db.connected ? 'Conectado' : 'Desconectado'}`);
-                
-                // 5. Contar produtos existentes
-                results.push('\n5️⃣ CONTANDO PRODUTOS...');
-                try {
-                    const { data, error, count } = await db.client
-                        .from('products')
-                        .select('*', { count: 'exact' });
-                    
-                    if (error) {
-                        results.push(`❌ Erro ao contar: ${error.message}`);
-                    } else {
-                        results.push(`📊 Produtos no banco: ${data ? data.length : 0}`);
-                        results.push(`📊 Produtos na memória: ${products.length}`);
-                        
-                        // Verificar produtos com imagens
-                        if (data && data.length > 0) {
-                            const withImages = data.filter(p => p.imageUrl || p.image_url).length;
-                            results.push(`📷 Produtos com fotos: ${withImages}`);
-                        }
-                    }
-                } catch (err) {
-                    results.push(`❌ Erro na contagem: ${err.message}`);
-                }
-                
-                // 6. Testar sistema de imagens
-                results.push('\n6️⃣ TESTANDO SISTEMA DE IMAGENS...');
-                try {
-                    const { data, error } = await db.client
-                        .from('images')
-                        .select('count')
-                        .limit(1);
-                    
-                    if (error) {
-                        results.push(`❌ Erro na tabela images: ${error.message}`);
-                        if (error.message.includes('relation "images" does not exist')) {
-                            results.push('💡 SOLUÇÃO: Tabela images não criada - execute o SQL completo');
-                        }
-                    } else {
-                        results.push('✅ Tabela images acessível');
-                        
-                        // Contar imagens salvas
-                        const { data: imageData } = await db.client
-                            .from('images')
-                            .select('id');
-                        results.push(`📷 Imagens salvas: ${imageData ? imageData.length : 0}`);
-                        
-                        // Verificar produtos com imagens
-                        const productsWithImages = products.filter(p => p.imageUrl || p.image_url).length;
-                        results.push(`📦 Produtos com fotos: ${productsWithImages}/${products.length}`);
-                        
-                        // Testar salvamento de imagem
-                        results.push('\n🧪 TESTANDO SALVAMENTO DE IMAGEM...');
-                        const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-                        const testImageId = 'test_image_' + Date.now();
-                        
-                        try {
-                            const saveResult = await db.saveImage(testImageId, testImageData);
-                            if (saveResult) {
-                                results.push('✅ Salvamento de imagem funcionando');
-                                
-                                // Testar carregamento
-                                const loadResult = await db.getImage(testImageId);
-                                if (loadResult === testImageData) {
-                                    results.push('✅ Carregamento de imagem funcionando');
-                                } else {
-                                    results.push('❌ Erro no carregamento de imagem');
-                                }
-                                
-                                // Limpar teste
-                                await db.deleteImage(testImageId);
-                                results.push('🧹 Imagem de teste removida');
-                            } else {
-                                results.push('❌ Erro no salvamento de imagem');
-                            }
-                        } catch (testError) {
-                            results.push(`❌ Erro no teste de imagem: ${testError.message}`);
-                        }
-                    }
-                } catch (err) {
-                    results.push(`❌ Erro ao testar imagens: ${err.message}`);
+                    results.push(`❌ Erro no localStorage: ${err.message}`);
                 }
                 
                 results.push('\n🎯 === FIM DO DIAGNÓSTICO ===');
                 
             } catch (error) {
-                results.push(`❌ ERRO CRÍTICO NO DIAGNÓSTICO: ${error.message}`);
+                results.push(`❌ ERRO CRÍTICO: ${error.message}`);
             }
             
-            // Mostrar resultados
             const resultText = results.join('\n');
             console.log(resultText);
             
-            // Criar modal com resultados
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-            modal.innerHTML = `
-                <div class="bg-white rounded-lg max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-xl font-bold text-blue-800">🔍 Diagnóstico do Supabase</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                        </div>
-                        <pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto font-mono">${resultText}</pre>
-                        <div class="mt-4 flex justify-end space-x-2">
-                            <button onclick="navigator.clipboard.writeText(\`${resultText}\`).then(() => alert('📋 Diagnóstico copiado!'))" 
-                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
-                                📋 Copiar Resultado
-                            </button>
-                            <button onclick="this.closest('.fixed').remove()" 
-                                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all">
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
+            showModal('🔍 Diagnóstico do Sistema', `<pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto font-mono">${resultText}</pre>`);
         }
 
-        // Placeholder functions for future features
-        function loadStoreConfig() {
-            console.log('Store config loaded');
-        }
+        // Form Submission Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const addProductForm = document.getElementById('add-product-form');
+            if (addProductForm) {
+                addProductForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const name = document.getElementById('product-name').value.trim();
+                    const brand = document.getElementById('product-brand').value;
+                    const category = document.getElementById('product-category').value;
+                    const price = parseFloat(document.getElementById('product-price').value);
+                    const stock = parseInt(document.getElementById('product-stock').value);
+                    const description = document.getElementById('product-description').value.trim();
 
-        function updateConfigForm() {
-            console.log('Config form updated');
-        }
+                    if (!name || !brand || !category || isNaN(price) || isNaN(stock)) {
+                        alert('❌ Por favor, preencha todos os campos obrigatórios!');
+                        return;
+                    }
+
+                    const productId = Date.now();
+                    let imageUrl = null;
+
+                    try {
+                        // Handle image upload
+                        if (currentProductImage) {
+                            if (isDbConnected) {
+                                const fileName = `product_${productId}_${Date.now()}`;
+                                imageUrl = await db.uploadImage(currentProductImage.file, fileName);
+                            }
+                            
+                            if (!imageUrl) {
+                                imageUrl = currentProductImage.dataUrl;
+                            }
+                        }
+
+                        const newProduct = {
+                            id: productId,
+                            name: name,
+                            brand: brand,
+                            category: category,
+                            price: price,
+                            stock: stock,
+                            description: description,
+                            image: getRandomEmoji(),
+                            imageUrl: imageUrl,
+                            image_url: imageUrl,
+                            created_at: new Date().toISOString()
+                        };
+
+                        if (isDbConnected) {
+                            await db.saveProduct(newProduct);
+                        }
+                        
+                        products.push(newProduct);
+                        saveToLocalStorage();
+                        
+                        // Clear form
+                        this.reset();
+                        currentProductImage = null;
+                        
+                        const previewContainer = document.getElementById('image-preview-container');
+                        const uploadPlaceholder = document.getElementById('upload-placeholder');
+                        if (previewContainer && uploadPlaceholder) {
+                            previewContainer.classList.add('hidden');
+                            uploadPlaceholder.classList.remove('hidden');
+                        }
+                        
+                        await loadAndRenderProducts();
+                        
+                        const successMessage = imageUrl 
+                            ? `✅ Produto "${name}" adicionado com foto!`
+                            : `✅ Produto "${name}" adicionado!`;
+                        
+                        alert(successMessage);
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar produto:', error);
+                        alert(`❌ Erro ao salvar produto: ${error.message}`);
+                    }
+                });
+            }
+        });
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('🚀 Inicializando KC Perfumaria...');
+                
+                // Initialize arrays
+                products = [];
+                sales = [];
+                cart = [];
+                
+                // Setup image upload
+                setupProductImageUpload();
+                
+                // Try to connect to Supabase
+                const dbConnected = await db.init();
+                isDbConnected = dbConnected;
+                
+                // Load data
+                await loadAndRenderProducts();
+                
+                // Load cart from localStorage
+                loadFromLocalStorage();
+                updateCartDisplay();
+                
+                // Load logo
+                const savedLogo = localStorage.getItem('kc_logo');
+                if (savedLogo) {
+                    updateLogo(savedLogo);
+                    updateAdminLogoPreview(savedLogo);
+                }
+                
+                console.log('✅ KC Perfumaria inicializada com sucesso!');
+                console.log(`📊 ${products.length} produtos carregados`);
+                console.log(`🔗 Modo: ${isDbConnected ? 'Online' : 'Local'}`);
+                
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                
+                // Emergency fallback
+                isDbConnected = false;
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+                updateCartDisplay();
+                
+                console.log('✅ Sistema funcionando em modo local');
+            }
+        });
+
+        // Make functions globally accessible
+        window.accessAdmin = accessAdmin;
+        window.backToStore = backToStore;
+        window.toggleCart = toggleCart;
+        window.addToCart = addToCart;
+        window.removeFromCart = removeFromCart;
+        window.updateQuantity = updateQuantity;
+        window.finalizePurchaseWhatsApp = finalizePurchaseWhatsApp;
+        window.filterByBrand = filterByBrand;
+        window.filterProducts = filterProducts;
+        window.editProduct = editProduct;
+        window.editProductImage = editProductImage;
+        window.deleteProduct = deleteProduct;
+        window.removeProductImage = removeProductImage;
+        window.changeLogo = changeLogo;
+        window.changeLogoAdmin = changeLogoAdmin;
+        window.removeLogoAdmin = removeLogoAdmin;
+        window.diagnosticSupabase = diagnosticSupabase;
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e413fc273e5e0f',t:'MTc1NTA0NDc1Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e4251193e5f187',t:'MTc1NTA0NTQ1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
