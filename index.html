@@ -1,541 +1,1457 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sua Loja de Perfumes e Cosméticos</title>
+    <title>KC Perfumaria - Perfumes e Cosméticos</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@supabase/supabase-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Estilos adicionais para o modal de administrador e a barra lateral do carrinho */
-        .admin-modal-backdrop, .cart-sidebar-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease;
-        }
-        .admin-modal-content, .cart-sidebar-content {
-            transition: transform 0.3s ease;
-        }
-        .admin-modal-content {
-            transform: translateY(-50px);
-        }
-        .cart-sidebar-content {
-            transform: translateX(100%);
-        }
-        .cart-sidebar-open .cart-sidebar-content {
-            transform: translateX(0);
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .product-card { transition: all 0.3s ease; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .admin-panel { display: none; }
+        .cart-sidebar { transform: translateX(100%); transition: transform 0.3s ease; }
+        .cart-sidebar.open { transform: translateX(0); }
+        .product-image { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; }
+        .product-image-placeholder { width: 100%; height: 200px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+        .image-upload-area { border: 2px dashed #d1d5db; border-radius: 8px; padding: 2rem; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+        .image-upload-area:hover { border-color: #8b5cf6; background-color: #faf5ff; }
+        .image-upload-area.dragover { border-color: #8b5cf6; background-color: #faf5ff; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .db-status { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; border-radius: 0.5rem; max-width: 28rem; width: 100%; padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+<body class="bg-gray-50">
+    <!-- Database Status Indicator -->
+    <div id="db-status" class="db-status bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hidden">
+        ✅ Sistema conectado
+    </div>
 
-    <nav class="bg-white shadow-lg">
-        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
-            <a href="#" class="font-bold text-gray-800 text-2xl">Sua Loja</a>
-            <div class="flex items-center space-x-4">
-                <div class="relative">
-                    <input id="search-input" type="text" placeholder="Pesquisar..." class="border rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-20 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden cursor-pointer" id="logo-container" onclick="changeLogo()">
+                        <img id="logo-image" class="w-full h-full object-cover hidden" alt="KC Perfumaria">
+                        <span id="logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">KC Perfumaria</h1>
+                        <p class="text-purple-200 text-sm">Perfumes e Cosméticos</p>
+                    </div>
                 </div>
-                <button id="cart-button" class="relative">
-                    <svg class="h-6 w-6 text-gray-600" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                    <span id="cart-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">0</span>
-                </button>
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleCart()" class="relative bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                        🛒 <span class="hidden sm:inline">Carrinho</span> (<span id="cart-count">0</span>)
+                    </button>
+                    <button onclick="accessAdmin()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                        ⚙️ <span class="hidden sm:inline">Admin</span>
+                    </button>
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <div id="cart-sidebar" class="fixed inset-0 overflow-hidden z-50 transform translate-x-full cart-sidebar-backdrop">
-        <div class="absolute inset-0 overflow-hidden">
-            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
-                <div class="pointer-events-auto w-screen max-w-md cart-sidebar-content bg-white shadow-xl">
-                    <div class="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
-                        <div class="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-                            <div class="flex items-start justify-between">
-                                <h2 class="text-lg font-medium text-gray-900">Carrinho de Compras</h2>
-                                <div class="ml-3 flex h-7 items-center">
-                                    <button id="close-cart-button" type="button" class="relative -m-2 p-2 text-gray-400 hover:text-gray-500">
-                                        <span class="absolute -inset-0.5"></span>
-                                        <span class="sr-only">Fechar painel</span>
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Customer View -->
+        <div id="customer-view">
+            <!-- Brand Filters -->
+            <div class="mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Marcas</h2>
+                <div class="flex flex-wrap gap-2 sm:gap-3">
+                    <button onclick="filterByBrand('todas')" class="brand-btn active bg-purple-600 text-white px-3 sm:px-6 py-2 rounded-full hover:bg-purple-700 transition-all text-sm sm:text-base">
+                        Todas
+                    </button>
+                    <button onclick="filterByBrand('boticario')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        🌿 Boticário
+                    </button>
+                    <button onclick="filterByBrand('mary-kay')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        💎 Mary Kay
+                    </button>
+                    <button onclick="filterByBrand('eudora')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        ✨ Eudora
+                    </button>
+                    <button onclick="filterByBrand('natura')" class="brand-btn bg-gray-200 text-gray-700 px-3 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        🍃 Natura
+                    </button>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="mb-8">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Categorias</h2>
+                <div class="flex flex-wrap gap-2 sm:gap-3">
+                    <button onclick="filterProducts('todos')" class="category-btn active bg-indigo-600 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-indigo-700 transition-all text-sm sm:text-base">
+                        Todos
+                    </button>
+                    <button onclick="filterProducts('perfumes')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        Perfumes
+                    </button>
+                    <button onclick="filterProducts('cosmeticos')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        Cosméticos
+                    </button>
+                    <button onclick="filterProducts('cuidados')" class="category-btn bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-full hover:bg-gray-300 transition-all text-sm sm:text-base">
+                        Cuidados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="products-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" class="admin-panel">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Painel Administrativo</h2>
+                    <div class="flex space-x-2">
+                        <button onclick="diagnosticSupabase()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all">
+                            🔍 Diagnóstico
+                        </button>
+                        <button onclick="backToStore()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                            🏪 Voltar para Loja
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Logo Management -->
+                <div class="max-w-2xl mx-auto mb-8">
+                    <h3 class="text-lg font-semibold mb-4">🖼️ Gerenciar Logo da Loja</h3>
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <div class="flex items-center space-x-6">
+                            <div class="flex-shrink-0">
+                                <div class="w-24 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                                    <img id="admin-logo-image" class="w-full h-full object-cover hidden" alt="Logo atual">
+                                    <span id="admin-logo-text" class="text-purple-600 font-bold text-2xl">KC</span>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-gray-800 mb-2">Logo Atual</h4>
+                                <p class="text-gray-600 text-sm mb-4">Clique no botão abaixo para alterar a logo da sua loja. Recomendamos imagens quadradas ou retangulares.</p>
+                                <div class="flex space-x-3">
+                                    <button onclick="changeLogoAdmin()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                        📷 Alterar Logo
+                                    </button>
+                                    <button onclick="removeLogoAdmin()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-all">
+                                        🗑️ Remover Logo
                                     </button>
                                 </div>
                             </div>
-                            <div class="mt-8">
-                                <div class="flow-root">
-                                    <ul role="list" id="cart-items" class="-my-6 divide-y divide-gray-200">
-                                        </ul>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            💡 Dica: Use imagens PNG ou JPG com fundo transparente para melhor resultado. Tamanho máximo: 2MB.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Product Form -->
+                <div class="max-w-2xl mx-auto">
+                    <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
+                    <form id="add-product-form" class="space-y-4">
+                        <!-- Product Image Upload -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
+                            <div class="image-upload-area" id="product-image-upload" onclick="document.getElementById('product-image-input').click()">
+                                <div id="image-preview-container" class="hidden">
+                                    <img id="image-preview" class="w-full h-32 object-cover rounded-lg mb-2" alt="Preview">
+                                    <button type="button" onclick="removeProductImage(event)" class="text-red-600 hover:text-red-800 text-sm">
+                                        🗑️ Remover Foto
+                                    </button>
+                                </div>
+                                <div id="upload-placeholder">
+                                    <div class="text-4xl mb-2">📷</div>
+                                    <p class="text-gray-600 font-medium">Clique para adicionar foto</p>
+                                    <p class="text-gray-400 text-sm mt-1">JPG, PNG ou GIF (máx. 5MB)</p>
                                 </div>
                             </div>
+                            <input type="file" id="product-image-input" accept="image/*" class="hidden">
                         </div>
-                        <div class="border-t border-gray-200 px-4 py-6 sm:px-6">
-                            <div class="flex justify-between text-base font-medium text-gray-900">
-                                <p>Subtotal</p>
-                                <p id="cart-total">R$ 0,00</p>
-                            </div>
-                            <p class="mt-0.5 text-sm text-gray-500">Frete e impostos calculados na finalização da compra.</p>
-                            <div class="mt-6">
-                                <a href="#" class="flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700">Finalizar Compra</a>
-                            </div>
-                        </div>
-                    </div>
+
+                        <input type="text" id="product-name" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <select id="product-brand" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                            <option value="">Selecione a marca</option>
+                            <option value="boticario">🌿 Boticário</option>
+                            <option value="mary-kay">💎 Mary Kay</option>
+                            <option value="eudora">✨ Eudora</option>
+                            <option value="natura">🍃 Natura</option>
+                        </select>
+                        <select id="product-category" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                            <option value="">Selecione a categoria</option>
+                            <option value="perfumes">Perfumes</option>
+                            <option value="cosmeticos">Cosméticos</option>
+                            <option value="cuidados">Cuidados</option>
+                        </select>
+                        <input type="number" id="product-price" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <input type="number" id="product-stock" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                        <textarea id="product-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24"></textarea>
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-all font-semibold">
+                            Adicionar Produto
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Product Gallery Management -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Produtos Cadastrados</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="product-gallery">
+                    <!-- Product gallery will be loaded here -->
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container mx-auto px-6 py-8">
-        <div class="flex flex-col lg:flex-row -mx-2">
-            <div class="w-full lg:w-1/4 px-2">
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h3 class="font-semibold text-xl mb-4">Filtros</h3>
-                    <div class="mb-4">
-                        <label class="block text-gray-700 font-bold mb-2">Marcas</label>
-                        <select id="brand-filter" class="w-full p-2 border rounded">
-                            <option value="all">Todas as Marcas</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">Categorias</label>
-                        <select id="category-filter" class="w-full p-2 border rounded">
-                            <option value="all">Todas as Categorias</option>
-                        </select>
-                    </div>
-                </div>
+    <!-- Cart Sidebar -->
+    <div id="cart-sidebar" class="cart-sidebar fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-bold">Carrinho de Compras</h3>
+                <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
-
-            <div class="w-full lg:w-3/4 px-2 mt-8 lg:mt-0">
-                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    </div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-6">
+            <div id="cart-items">
+                <p class="text-gray-500 text-center py-8">Carrinho vazio</p>
             </div>
+        </div>
+        
+        <div class="p-6 border-t border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg font-semibold">Total:</span>
+                <span class="text-xl font-bold text-purple-600" id="cart-total">R$ 0,00</span>
+            </div>
+            <button onclick="finalizePurchaseWhatsApp()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-all font-semibold">
+                📱 Finalizar pelo WhatsApp
+            </button>
         </div>
     </div>
 
-    <footer class="bg-white mt-8 shadow-lg py-6">
-        <div class="container mx-auto px-6 text-center text-gray-600">
-            &copy; 2024 Sua Loja. Todos os direitos reservados.
-            <button id="admin-button" class="ml-4 text-sm text-blue-500 hover:text-blue-700">Painel do Administrador</button>
-        </div>
-    </footer>
-
-    <div id="admin-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 admin-modal-backdrop">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white admin-modal-content">
-            <div class="mt-3 text-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Painel do Administrador</h3>
-                <div id="admin-login" class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500">Insira a senha de administrador.</p>
-                    <input id="admin-password" type="password" placeholder="Senha" class="mt-4 w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="admin-login-button" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Entrar</button>
-                </div>
-                <div id="admin-content" class="mt-2 px-7 py-3 hidden">
-                    <button id="add-product-button" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Adicionar Novo Produto</button>
-                    <div id="product-management-form" class="mt-4 p-4 border rounded hidden">
-                        <h4 class="font-bold text-md mb-2">Gerenciar Produto</h4>
-                        <input type="hidden" id="product-id">
-                        <input type="text" id="product-name" placeholder="Nome do Produto" class="w-full p-2 border rounded mb-2">
-                        <input type="text" id="product-description" placeholder="Descrição" class="w-full p-2 border rounded mb-2">
-                        <input type="number" id="product-price" placeholder="Preço" class="w-full p-2 border rounded mb-2">
-                        <select id="product-brand" class="w-full p-2 border rounded mb-2">
-                            <option value="">Selecione a Marca</option>
-                        </select>
-                        <select id="product-category" class="w-full p-2 border rounded mb-2">
-                            <option value="">Selecione a Categoria</option>
-                        </select>
-                        <input type="file" id="product-image-upload" class="w-full p-2 mb-2">
-                        <button id="save-product-button" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Salvar Produto</button>
-                        <button id="cancel-edit-button" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Cancelar</button>
-                    </div>
-                    <div id="admin-product-list" class="mt-4">
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleCart()"></div>
 
     <script>
-        // Use variáveis de ambiente em um ambiente de produção!
-        // No front-end, isso ainda é visível, então para projetos sensíveis
-        // o ideal é ter uma API intermediária para o Supabase.
+        // Configuration
         const SUPABASE_URL = 'https://udyihngwyqhfhdxkxwso.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkeWlobmd3eXFoZmhkeGt4d3NvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NTcwOTUsImV4cCI6MjA3MDQzMzA5NX0.MA3RgucTM7akkqxF1Zgl4aLtGBFAUT48IKfXez8ZK3c';
-        const ADMIN_PASSWORD = 'kc0310'; 
+        const ADMIN_PASSWORD = 'kc0310';
+        const WHATSAPP_NUMBER = '5541997786625';
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        // Global Variables
+        let supabaseClient = null;
         let products = [];
-        let brands = new Set();
-        let categories = new Set();
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let cart = [];
+        let sales = [];
+        let currentFilter = 'todos';
+        let currentBrand = 'todas';
+        let currentProductImage = null;
+        let isDbConnected = false;
 
-        const productList = document.getElementById('product-list');
-        const cartButton = document.getElementById('cart-button');
-        const cartSidebar = document.getElementById('cart-sidebar');
-        const closeCartButton = document.getElementById('close-cart-button');
-        const cartItemsList = document.getElementById('cart-items');
-        const cartTotal = document.getElementById('cart-total');
-        const cartCountSpan = document.getElementById('cart-count');
-        const brandFilterSelect = document.getElementById('brand-filter');
-        const categoryFilterSelect = document.getElementById('category-filter');
-        const searchInput = document.getElementById('search-input');
+        // Database Management System
+        const db = {
+            client: null,
+            connected: false,
 
-        // Admin elements
-        const adminButton = document.getElementById('admin-button');
-        const adminModal = document.getElementById('admin-modal');
-        const adminLogin = document.getElementById('admin-login');
-        const adminContent = document.getElementById('admin-content');
-        const adminPasswordInput = document.getElementById('admin-password');
-        const adminLoginButton = document.getElementById('admin-login-button');
-        const addProductButton = document.getElementById('add-product-button');
-        const productManagementForm = document.getElementById('product-management-form');
-        const saveProductButton = document.getElementById('save-product-button');
-        const cancelEditButton = document.getElementById('cancel-edit-button');
-        const adminProductListDiv = document.getElementById('admin-product-list');
+            async init() {
+                try {
+                    console.log('🔌 Inicializando conexão com Supabase...');
+                    this.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    
+                    // Test connection
+                    const { data, error } = await this.client
+                        .from('products')
+                        .select('id')
+                        .limit(1);
+                    
+                    if (error) {
+                        console.error('❌ Erro na conexão:', error);
+                        this.connected = false;
+                        this.showStatus('❌ Banco offline - modo local', 'bg-yellow-100 text-yellow-800');
+                        return false;
+                    }
+                    
+                    this.connected = true;
+                    isDbConnected = true;
+                    console.log('✅ Supabase conectado com sucesso!');
+                    this.showStatus('✅ Sistema online', 'bg-green-100 text-green-800');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao inicializar Supabase:', error);
+                    this.connected = false;
+                    this.showStatus('❌ Erro de conexão', 'bg-red-100 text-red-800');
+                    return false;
+                }
+            },
 
-        // Função para carregar e exibir os produtos
-        async function loadProducts() {
+            showStatus(message, className = 'bg-green-100 text-green-800') {
+                const statusEl = document.getElementById('db-status');
+                if (statusEl) {
+                    statusEl.textContent = message;
+                    statusEl.className = `db-status px-3 py-1 rounded-full text-sm font-medium ${className}`;
+                    statusEl.classList.remove('hidden');
+                    
+                    setTimeout(() => {
+                        statusEl.classList.add('hidden');
+                    }, 3000);
+                }
+            },
+
+            async loadProducts() {
+                if (!this.connected) return [];
+                
+                try {
+                    const { data, error } = await this.client
+                        .from('products')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    console.log(`📦 ${data?.length || 0} produtos carregados do Supabase`);
+                    return data || [];
+                } catch (error) {
+                    console.error('❌ Erro ao carregar produtos:', error);
+                    return [];
+                }
+            },
+
+            async saveProduct(product) {
+                if (!this.connected) return false;
+                
+                try {
+                    const productData = {
+                        id: product.id,
+                        name: product.name,
+                        brand: product.brand,
+                        category: product.category,
+                        price: parseFloat(product.price),
+                        stock: parseInt(product.stock),
+                        description: product.description || '',
+                        image: product.image || '🌸',
+                        image_url: product.imageUrl || null
+                    };
+                    
+                    const { data, error } = await this.client
+                        .from('products')
+                        .upsert(productData, { onConflict: 'id' })
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Produto salvo no Supabase:', product.name);
+                    this.showStatus('✅ Produto salvo!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao salvar produto:', error);
+                    return false;
+                }
+            },
+
+            async deleteProduct(productId) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { error } = await this.client
+                        .from('products')
+                        .delete()
+                        .eq('id', productId);
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Produto excluído do Supabase');
+                    this.showStatus('✅ Produto excluído!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao excluir produto:', error);
+                    return false;
+                }
+            },
+
+            async uploadImage(file, fileName) {
+                if (!this.connected) return null;
+                
+                try {
+                    const { data, error } = await this.client.storage
+                        .from('product_images')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                        });
+                    
+                    if (error) throw error;
+                    
+                    const { data: urlData } = this.client.storage
+                        .from('product_images')
+                        .getPublicUrl(fileName);
+                    
+                    console.log('✅ Imagem enviada para Supabase Storage');
+                    return urlData.publicUrl;
+                } catch (error) {
+                    console.error('❌ Erro ao enviar imagem:', error);
+                    return null;
+                }
+            },
+
+            async deleteImage(fileName) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { error } = await this.client.storage
+                        .from('product_images')
+                        .remove([fileName]);
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Imagem excluída do Storage');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao excluir imagem:', error);
+                    return false;
+                }
+            },
+
+            async saveSale(sale) {
+                if (!this.connected) return false;
+                
+                try {
+                    const { data, error } = await this.client
+                        .from('sales')
+                        .insert(sale)
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    console.log('✅ Venda salva no Supabase');
+                    this.showStatus('✅ Venda registrada!');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erro ao salvar venda:', error);
+                    return false;
+                }
+            }
+        };
+
+        // Utility Functions
+        function getRandomEmoji() {
+            const emojis = ['🌸', '💄', '🧴', '✨', '💎', '🌺', '🎀', '💋', '🌷', '🦋'];
+            return emojis[Math.floor(Math.random() * emojis.length)];
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(price);
+        }
+
+        function showModal(title, content, buttons = []) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3 class="text-lg font-bold mb-4">${title}</h3>
+                    <div class="mb-6">${content}</div>
+                    <div class="flex justify-end space-x-2">
+                        ${buttons.map(btn => `<button onclick="${btn.action}" class="${btn.class}">${btn.text}</button>`).join('')}
+                        <button onclick="this.closest('.modal-overlay').remove()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-all">Fechar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        // Local Storage Functions
+        function saveToLocalStorage() {
             try {
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('*');
-
-                if (error) throw error;
-                products = data;
-                renderProducts(products);
-                updateFilters(products);
+                localStorage.setItem('kc_products', JSON.stringify(products));
+                localStorage.setItem('kc_sales', JSON.stringify(sales));
+                localStorage.setItem('kc_cart', JSON.stringify(cart));
+                console.log('💾 Dados salvos no localStorage');
+                return true;
             } catch (error) {
-                console.error('Erro ao carregar produtos do Supabase:', error.message);
-                // Contingência: carregar do armazenamento local
-                products = JSON.parse(localStorage.getItem('products')) || [];
-                renderProducts(products);
-                updateFilters(products);
+                console.error('❌ Erro ao salvar no localStorage:', error);
+                return false;
             }
         }
 
-        function renderProducts(productsToRender) {
-            productList.innerHTML = '';
-            if (productsToRender.length === 0) {
-                productList.innerHTML = '<p class="col-span-full text-center text-gray-500">Nenhum produto encontrado.</p>';
+        function loadFromLocalStorage() {
+            try {
+                const savedProducts = localStorage.getItem('kc_products');
+                const savedSales = localStorage.getItem('kc_sales');
+                const savedCart = localStorage.getItem('kc_cart');
+                
+                if (savedProducts) {
+                    products = JSON.parse(savedProducts);
+                    console.log(`📱 ${products.length} produtos carregados do localStorage`);
+                }
+                
+                if (savedSales) {
+                    sales = JSON.parse(savedSales);
+                    console.log(`💰 ${sales.length} vendas carregadas do localStorage`);
+                }
+                
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                    console.log(`🛒 ${cart.length} itens carregados no carrinho`);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao carregar do localStorage:', error);
+                return false;
             }
-            productsToRender.forEach(product => {
-                const productCard = document.createElement('div');
-                productCard.className = 'bg-white rounded-lg shadow-lg overflow-hidden transition-transform duration-300 hover:scale-105';
-                productCard.innerHTML = `
-                    <img src="${product.imageUrl || 'https://via.placeholder.com/400x300.png?text=Sem+Imagem'}" alt="${product.name}" class="w-full h-48 object-cover">
-                    <div class="p-6">
-                        <h4 class="font-bold text-lg mb-2">${product.name}</h4>
-                        <p class="text-gray-600 text-sm mb-2">${product.description}</p>
-                        <p class="font-bold text-xl text-blue-600 mb-4">R$ ${product.price.toFixed(2)}</p>
-                        <button onclick="addToCart(${product.id})" class="w-full bg-blue-500 text-white py-2 px-4 rounded-full font-bold hover:bg-blue-600 transition-colors duration-300">
-                            Adicionar ao Carrinho
-                        </button>
+        }
+
+        // Image Handling Functions
+        function setupProductImageUpload() {
+            const imageInput = document.getElementById('product-image-input');
+            const uploadArea = document.getElementById('product-image-upload');
+            
+            if (!imageInput || !uploadArea) return;
+            
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    handleProductImageFile(file);
+                }
+            });
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    handleProductImageFile(file);
+                }
+            });
+        }
+
+        function handleProductImageFile(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert('❌ Por favor, selecione apenas arquivos de imagem.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentProductImage = {
+                    file: file,
+                    dataUrl: e.target.result
+                };
+                showImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(imageData) {
+            const previewContainer = document.getElementById('image-preview-container');
+            const uploadPlaceholder = document.getElementById('upload-placeholder');
+            const imagePreview = document.getElementById('image-preview');
+
+            if (previewContainer && uploadPlaceholder && imagePreview) {
+                imagePreview.src = imageData;
+                previewContainer.classList.remove('hidden');
+                uploadPlaceholder.classList.add('hidden');
+            }
+        }
+
+        function removeProductImage(event) {
+            event.stopPropagation();
+            
+            const previewContainer = document.getElementById('image-preview-container');
+            const uploadPlaceholder = document.getElementById('upload-placeholder');
+            const imageInput = document.getElementById('product-image-input');
+
+            currentProductImage = null;
+            
+            if (previewContainer && uploadPlaceholder && imageInput) {
+                previewContainer.classList.add('hidden');
+                uploadPlaceholder.classList.remove('hidden');
+                imageInput.value = '';
+            }
+        }
+
+        // Logo Management Functions
+        function changeLogo() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        updateLogo(e.target.result);
+                        localStorage.setItem('kc_logo', e.target.result);
+                        alert('✅ Logo atualizada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function changeLogoAdmin() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 2MB.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const logoData = e.target.result;
+                        updateLogo(logoData);
+                        updateAdminLogoPreview(logoData);
+                        localStorage.setItem('kc_logo', logoData);
+                        alert('✅ Logo atualizada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        function removeLogoAdmin() {
+            if (confirm('🗑️ Tem certeza que deseja remover a logo?')) {
+                updateLogo(null);
+                updateAdminLogoPreview(null);
+                localStorage.removeItem('kc_logo');
+                alert('✅ Logo removida com sucesso!');
+            }
+        }
+
+        function updateLogo(logoData) {
+            const logoImage = document.getElementById('logo-image');
+            const logoText = document.getElementById('logo-text');
+            
+            if (logoImage && logoText) {
+                if (logoData) {
+                    logoImage.src = logoData;
+                    logoImage.classList.remove('hidden');
+                    logoText.classList.add('hidden');
+                } else {
+                    logoImage.classList.add('hidden');
+                    logoText.classList.remove('hidden');
+                }
+            }
+        }
+
+        function updateAdminLogoPreview(logoData) {
+            const adminLogoImage = document.getElementById('admin-logo-image');
+            const adminLogoText = document.getElementById('admin-logo-text');
+            
+            if (adminLogoImage && adminLogoText) {
+                if (logoData) {
+                    adminLogoImage.src = logoData;
+                    adminLogoImage.classList.remove('hidden');
+                    adminLogoText.classList.add('hidden');
+                } else {
+                    adminLogoImage.classList.add('hidden');
+                    adminLogoText.classList.remove('hidden');
+                }
+            }
+        }
+
+        // Product Management Functions
+        async function loadAndRenderProducts() {
+            try {
+                console.log('🔄 Carregando produtos...');
+                
+                if (isDbConnected) {
+                    const supabaseProducts = await db.loadProducts();
+                    if (supabaseProducts && supabaseProducts.length > 0) {
+                        products = supabaseProducts;
+                        console.log(`✅ ${products.length} produtos carregados do Supabase`);
+                        saveToLocalStorage();
+                    } else {
+                        loadFromLocalStorage();
+                    }
+                } else {
+                    loadFromLocalStorage();
+                }
+                
+                renderProducts();
+                updateProductGallery();
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar produtos:', error);
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+            }
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('products-grid');
+            if (!grid) return;
+            
+            let filteredProducts = products;
+
+            if (currentBrand !== 'todas') {
+                filteredProducts = filteredProducts.filter(p => p.brand === currentBrand);
+            }
+
+            if (currentFilter !== 'todos') {
+                filteredProducts = filteredProducts.filter(p => p.category === currentFilter);
+            }
+
+            const brandNames = {
+                'boticario': '🌿 Boticário',
+                'mary-kay': '💎 Mary Kay',
+                'eudora': '✨ Eudora',
+                'natura': '🍃 Natura'
+            };
+
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto encontrado</div>';
+                return;
+            }
+
+            grid.innerHTML = filteredProducts.map(product => {
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="product-image-placeholder" style="display: none;">${product.image}</div>`
+                    : `<div class="product-image-placeholder">${product.image}</div>`;
+
+                return `
+                    <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
+                        <div class="p-0">
+                            ${productImageHtml}
+                        </div>
+                        <div class="p-6">
+                            <div class="text-xs text-purple-600 font-semibold mb-2 text-center">${brandNames[product.brand] || product.brand}</div>
+                            <h3 class="font-semibold text-lg mb-2 line-clamp-2">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${product.description || ''}</p>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-2xl font-bold text-purple-600">${formatPrice(product.price)}</span>
+                                <span class="text-sm text-gray-500">Estoque: ${product.stock}</span>
+                            </div>
+                            <button onclick="addToCart(${product.id})" 
+                                    ${product.stock === 0 ? 'disabled' : ''}
+                                    class="w-full py-2 px-4 rounded-lg font-semibold transition-all
+                                    ${product.stock === 0 
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                        : 'bg-purple-600 text-white hover:bg-purple-700'}">
+                                ${product.stock === 0 ? 'Sem Estoque' : '🛒 Adicionar ao Carrinho'}
+                            </button>
+                        </div>
                     </div>
                 `;
-                productList.appendChild(productCard);
-            });
+            }).join('');
         }
 
-        function updateFilters(productsList) {
-            brands.clear();
-            categories.clear();
-            productsList.forEach(p => {
-                brands.add(p.brand);
-                categories.add(p.category);
-            });
+        function updateProductGallery() {
+            const gallery = document.getElementById('product-gallery');
+            if (!gallery) return;
+            
+            const brandNames = {
+                'boticario': '🌿 Boticário',
+                'mary-kay': '💎 Mary Kay',
+                'eudora': '✨ Eudora',
+                'natura': '🍃 Natura'
+            };
 
-            brandFilterSelect.innerHTML = '<option value="all">Todas as Marcas</option>';
-            brands.forEach(b => {
-                brandFilterSelect.innerHTML += `<option value="${b}">${b}</option>`;
-            });
-
-            categoryFilterSelect.innerHTML = '<option value="all">Todas as Categorias</option>';
-            categories.forEach(c => {
-                categoryFilterSelect.innerHTML += `<option value="${c}">${c}</option>`;
-            });
-
-            // Preenche os selects do formulário de admin
-            const productBrandSelect = document.getElementById('product-brand');
-            const productCategorySelect = document.getElementById('product-category');
-            productBrandSelect.innerHTML = '<option value="">Selecione a Marca</option>';
-            productCategorySelect.innerHTML = '<option value="">Selecione a Categoria</option>';
-            brands.forEach(b => productBrandSelect.innerHTML += `<option value="${b}">${b}</option>`);
-            categories.forEach(c => productCategorySelect.innerHTML += `<option value="${c}">${c}</option>`);
-        }
-
-        function filterProducts() {
-            const selectedBrand = brandFilterSelect.value;
-            const selectedCategory = categoryFilterSelect.value;
-            const searchQuery = searchInput.value.toLowerCase();
-
-            const filtered = products.filter(product => {
-                const matchesBrand = selectedBrand === 'all' || product.brand === selectedBrand;
-                const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-                const matchesSearch = product.name.toLowerCase().includes(searchQuery) || product.description.toLowerCase().includes(searchQuery);
-                return matchesBrand && matchesCategory && matchesSearch;
-            });
-
-            renderProducts(filtered);
-        }
-
-        // Eventos para filtros
-        brandFilterSelect.addEventListener('change', filterProducts);
-        categoryFilterSelect.addEventListener('change', filterProducts);
-        searchInput.addEventListener('input', filterProducts);
-
-        // Funções do carrinho
-        function updateCartCount() {
-            const count = cart.reduce((acc, item) => acc + item.quantity, 0);
-            cartCountSpan.textContent = count;
-        }
-
-        function renderCartItems() {
-            cartItemsList.innerHTML = '';
-            let total = 0;
-            if (cart.length === 0) {
-                cartItemsList.innerHTML = '<li class="text-center text-gray-500">O seu carrinho está vazio.</li>';
-            } else {
-                cart.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'flex py-6';
-                    li.innerHTML = `
-                        <div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                            <img src="${item.imageUrl || 'https://via.placeholder.com/96'}" alt="${item.name}" class="h-full w-full object-cover object-center">
-                        </div>
-                        <div class="ml-4 flex flex-1 flex-col">
-                            <div>
-                                <div class="flex justify-between text-base font-medium text-gray-900">
-                                    <h3>${item.name}</h3>
-                                    <p class="ml-4">R$ ${(item.price * item.quantity).toFixed(2)}</p>
-                                </div>
-                                <p class="mt-1 text-sm text-gray-500">${item.brand}</p>
-                            </div>
-                            <div class="flex flex-1 items-end justify-between text-sm">
-                                <p class="text-gray-500">Qtd ${item.quantity}</p>
-                                <div class="flex">
-                                    <button onclick="removeFromCart(${item.id})" type="button" class="font-medium text-indigo-600 hover:text-indigo-500">Remover</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    cartItemsList.appendChild(li);
-                    total += item.price * item.quantity;
-                });
+            if (products.length === 0) {
+                gallery.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum produto cadastrado</div>';
+                return;
             }
-            cartTotal.textContent = `R$ ${total.toFixed(2)}`;
-            localStorage.setItem('cart', JSON.stringify(cart));
-            updateCartCount();
+
+            gallery.innerHTML = products.map(product => {
+                const productImageHtml = product.imageUrl || product.image_url
+                    ? `<img src="${product.imageUrl || product.image_url}" alt="${product.name}" class="w-full h-32 object-cover rounded-lg mb-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2" style="display: none;">${product.image}</div>`
+                    : `<div class="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-3xl mb-2">${product.image}</div>`;
+
+                return `
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        ${productImageHtml}
+                        <div class="text-xs text-purple-600 font-medium mb-1">${brandNames[product.brand] || product.brand}</div>
+                        <h4 class="font-semibold text-sm mb-1 line-clamp-2">${product.name}</h4>
+                        <p class="text-xs text-gray-600 mb-2">${formatPrice(product.price)} | Estoque: ${product.stock}</p>
+                        <div class="flex space-x-1">
+                            <button onclick="editProduct(${product.id})" class="flex-1 bg-green-100 text-green-600 text-xs py-1 px-2 rounded hover:bg-green-200 transition-all">
+                                ✏️ Editar
+                            </button>
+                            <button onclick="editProductImage(${product.id})" class="flex-1 bg-blue-100 text-blue-600 text-xs py-1 px-2 rounded hover:bg-blue-200 transition-all">
+                                📷 Foto
+                            </button>
+                            <button onclick="deleteProduct(${product.id})" class="flex-1 bg-red-100 text-red-600 text-xs py-1 px-2 rounded hover:bg-red-200 transition-all">
+                                🗑️ Excluir
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        function addToCart(productId) {
+        async function editProduct(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3 class="text-lg font-bold mb-4">✏️ Editar Produto</h3>
+                    <form id="edit-product-form">
+                        <input type="text" id="edit-name" value="${product.name}" placeholder="Nome do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <select id="edit-brand" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="boticario" ${product.brand === 'boticario' ? 'selected' : ''}>🌿 Boticário</option>
+                            <option value="mary-kay" ${product.brand === 'mary-kay' ? 'selected' : ''}>💎 Mary Kay</option>
+                            <option value="eudora" ${product.brand === 'eudora' ? 'selected' : ''}>✨ Eudora</option>
+                            <option value="natura" ${product.brand === 'natura' ? 'selected' : ''}>🍃 Natura</option>
+                        </select>
+                        
+                        <select id="edit-category" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                            <option value="perfumes" ${product.category === 'perfumes' ? 'selected' : ''}>Perfumes</option>
+                            <option value="cosmeticos" ${product.category === 'cosmeticos' ? 'selected' : ''}>Cosméticos</option>
+                            <option value="cuidados" ${product.category === 'cuidados' ? 'selected' : ''}>Cuidados</option>
+                        </select>
+                        
+                        <input type="number" id="edit-price" value="${product.price}" placeholder="Preço (R$)" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <input type="number" id="edit-stock" value="${product.stock}" placeholder="Quantidade em estoque" class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-purple-500" required>
+                        
+                        <textarea id="edit-description" placeholder="Descrição do produto" class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-20 focus:ring-2 focus:ring-purple-500">${product.description || ''}</textarea>
+                        
+                        <div class="flex space-x-2">
+                            <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                ✅ Salvar
+                            </button>
+                            <button type="button" onclick="this.closest('.modal-overlay').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            document.getElementById('edit-product-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                product.name = document.getElementById('edit-name').value;
+                product.brand = document.getElementById('edit-brand').value;
+                product.category = document.getElementById('edit-category').value;
+                product.price = parseFloat(document.getElementById('edit-price').value);
+                product.stock = parseInt(document.getElementById('edit-stock').value);
+                product.description = document.getElementById('edit-description').value;
+                
+                if (isDbConnected) {
+                    await db.saveProduct(product);
+                }
+                
+                saveToLocalStorage();
+                await loadAndRenderProducts();
+                modal.remove();
+                
+                alert('✅ Produto atualizado com sucesso!');
+            });
+        }
+
+        async function editProductImage(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('❌ Arquivo muito grande! O tamanho máximo é 5MB.');
+                        return;
+                    }
+
+                    try {
+                        let imageUrl = null;
+                        
+                        if (isDbConnected) {
+                            const fileName = `product_${product.id}_${Date.now()}`;
+                            imageUrl = await db.uploadImage(file, fileName);
+                        }
+                        
+                        if (!imageUrl) {
+                            // Fallback to base64
+                            const reader = new FileReader();
+                            reader.onload = async function(e) {
+                                product.imageUrl = e.target.result;
+                                product.image_url = e.target.result;
+                                
+                                if (isDbConnected) {
+                                    await db.saveProduct(product);
+                                }
+                                
+                                saveToLocalStorage();
+                                await loadAndRenderProducts();
+                                alert('✅ Foto do produto atualizada!');
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            product.imageUrl = imageUrl;
+                            product.image_url = imageUrl;
+                            
+                            if (isDbConnected) {
+                                await db.saveProduct(product);
+                            }
+                            
+                            saveToLocalStorage();
+                            await loadAndRenderProducts();
+                            alert('✅ Foto do produto atualizada!');
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao atualizar imagem:', error);
+                        alert('❌ Erro ao atualizar imagem. Tente novamente.');
+                    }
+                }
+            };
+            
+            fileInput.click();
+        }
+
+        async function deleteProduct(productId) {
+            if (confirm('🗑️ Tem certeza que deseja excluir este produto?')) {
+                try {
+                    if (isDbConnected) {
+                        await db.deleteProduct(productId);
+                        
+                        // Delete image if exists
+                        const product = products.find(p => p.id === productId);
+                        if (product && product.imageUrl && product.imageUrl.includes('supabase')) {
+                            const fileName = product.imageUrl.split('/').pop();
+                            await db.deleteImage(fileName);
+                        }
+                    }
+                    
+                    products = products.filter(p => p.id !== productId);
+                    saveToLocalStorage();
+                    await loadAndRenderProducts();
+                    
+                    alert('✅ Produto excluído com sucesso!');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao excluir produto:', error);
+                    alert('❌ Erro ao excluir produto. Tente novamente.');
+                }
+            }
+        }
+
+        // Filter Functions
+        function filterByBrand(brand) {
+            currentBrand = brand;
+            
+            document.querySelectorAll('.brand-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-purple-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            
+            event.target.classList.add('active', 'bg-purple-600', 'text-white');
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            
+            renderProducts();
+        }
+
+        function filterProducts(category) {
+            currentFilter = category;
+            
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            
+            event.target.classList.add('active', 'bg-indigo-600', 'text-white');
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            
+            renderProducts();
+        }
+
+        // Cart Management Functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock === 0) return;
+
             const existingItem = cart.find(item => item.id === productId);
             if (existingItem) {
-                existingItem.quantity += 1;
+                if (existingItem.quantity < product.stock) {
+                    existingItem.quantity++;
+                }
             } else {
-                cart.push({ ...product, quantity: 1 });
+                cart.push({
+                    id: productId,
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
+                    image: product.image,
+                    imageUrl: product.imageUrl || product.image_url
+                });
             }
-            renderCartItems();
+            
+            updateCartDisplay();
+            saveToLocalStorage();
         }
 
         function removeFromCart(productId) {
             cart = cart.filter(item => item.id !== productId);
-            renderCartItems();
+            updateCartDisplay();
+            saveToLocalStorage();
         }
 
-        // Eventos do carrinho
-        cartButton.addEventListener('click', () => {
-            cartSidebar.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-            setTimeout(() => {
-                cartSidebar.classList.add('cart-sidebar-open');
-            }, 10);
-        });
-
-        closeCartButton.addEventListener('click', () => {
-            cartSidebar.classList.remove('cart-sidebar-open');
-            document.body.classList.remove('overflow-hidden');
-            setTimeout(() => {
-                cartSidebar.classList.add('hidden');
-            }, 300);
-        });
-
-        // Funções do painel de administração
-        adminButton.addEventListener('click', () => {
-            adminModal.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-        });
-
-        adminModal.addEventListener('click', (event) => {
-            if (event.target === adminModal) {
-                adminModal.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-                // Reseta o estado do modal ao fechar
-                adminLogin.classList.remove('hidden');
-                adminContent.classList.add('hidden');
-                adminPasswordInput.value = '';
-                productManagementForm.classList.add('hidden');
+        function updateQuantity(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            const product = products.find(p => p.id === productId);
+            
+            if (item && product) {
+                const newQuantity = item.quantity + change;
+                if (newQuantity > 0 && newQuantity <= product.stock) {
+                    item.quantity = newQuantity;
+                } else if (newQuantity <= 0) {
+                    removeFromCart(productId);
+                    return;
+                }
             }
-        });
-
-        adminLoginButton.addEventListener('click', () => {
-            // Em uma implementação real, essa autenticação seria feita via Supabase Auth
-            if (adminPasswordInput.value === ADMIN_PASSWORD) {
-                adminLogin.classList.add('hidden');
-                adminContent.classList.remove('hidden');
-                renderAdminProducts();
-            } else {
-                alert('Senha incorreta!');
-            }
-        });
-
-        addProductButton.addEventListener('click', () => {
-            // Limpa o formulário para um novo produto
-            document.getElementById('product-id').value = '';
-            document.getElementById('product-name').value = '';
-            document.getElementById('product-description').value = '';
-            document.getElementById('product-price').value = '';
-            document.getElementById('product-brand').value = '';
-            document.getElementById('product-category').value = '';
-            productManagementForm.classList.remove('hidden');
-        });
-
-        cancelEditButton.addEventListener('click', () => {
-            productManagementForm.classList.add('hidden');
-        });
-
-        async function renderAdminProducts() {
-            adminProductListDiv.innerHTML = '';
-            products.forEach(product => {
-                const productRow = document.createElement('div');
-                productRow.className = 'flex justify-between items-center p-2 border-b';
-                productRow.innerHTML = `
-                    <span>${product.name} - R$${product.price.toFixed(2)}</span>
-                    <div>
-                        <button onclick="editProduct(${product.id})" class="text-blue-500 mr-2">Editar</button>
-                        <button onclick="deleteProduct(${product.id})" class="text-red-500">Excluir</button>
-                    </div>
-                `;
-                adminProductListDiv.appendChild(productRow);
-            });
+            updateCartDisplay();
+            saveToLocalStorage();
         }
 
-        async function saveProduct() {
-            const id = document.getElementById('product-id').value;
-            const name = document.getElementById('product-name').value;
-            const description = document.getElementById('product-description').value;
-            const price = parseFloat(document.getElementById('product-price').value);
-            const brand = document.getElementById('product-brand').value;
-            const category = document.getElementById('product-category').value;
-            const imageFile = document.getElementById('product-image-upload').files[0];
+        function updateCartDisplay() {
+            const cartItems = document.getElementById('cart-items');
+            const cartCount = document.getElementById('cart-count');
+            const cartTotal = document.getElementById('cart-total');
 
-            if (!name || !description || isNaN(price) || !brand || !category) {
-                alert('Por favor, preencha todos os campos.');
+            if (!cartItems || !cartCount || !cartTotal) return;
+
+            cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-500 text-center py-8">Carrinho vazio</p>';
+                cartTotal.textContent = formatPrice(0);
                 return;
             }
 
-            let imageUrl = null;
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            cartTotal.textContent = formatPrice(total);
 
-            if (imageFile) {
-                // Upload para o Supabase Storage
-                const filePath = `${Date.now()}_${imageFile.name}`;
-                const { data, error } = await supabase.storage
-                    .from('product-images')
-                    .upload(filePath, imageFile);
+            cartItems.innerHTML = cart.map(item => {
+                const itemImageHtml = item.imageUrl 
+                    ? `<img src="${item.imageUrl}" alt="${item.name}" class="w-12 h-12 object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <span class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xl" style="display: none;">${item.image}</span>`
+                    : `<span class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xl">${item.image}</span>`;
 
-                if (error) {
-                    console.error('Erro ao fazer upload da imagem:', error);
-                    alert('Erro ao fazer upload da imagem.');
-                    return;
-                }
-                
-                // Obtém a URL pública da imagem
-                const { data: publicUrlData } = supabase.storage
-                    .from('product-images')
-                    .getPublicUrl(filePath);
-                
-                imageUrl = publicUrlData.publicUrl;
+                return `
+                    <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                        <div class="flex items-center space-x-3">
+                            ${itemImageHtml}
+                            <div>
+                                <h4 class="font-semibold text-sm">${item.name}</h4>
+                                <p class="text-purple-600 font-semibold text-sm">${formatPrice(item.price)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">-</button>
+                            <span class="w-8 text-center text-sm">${item.quantity}</span>
+                            <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-sm">+</button>
+                            <button onclick="removeFromCart(${item.id})" class="ml-2 text-red-500 hover:text-red-700 text-sm">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleCart() {
+            const sidebar = document.getElementById('cart-sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        // WhatsApp Purchase Function
+        async function finalizePurchaseWhatsApp() {
+            if (cart.length === 0) {
+                alert('🛒 Seu carrinho está vazio!');
+                return;
             }
 
-            const newProduct = {
-                name: name,
-                description: description,
-                price: price,
-                brand: brand,
-                category: category,
-                imageUrl: imageUrl, // Armazena a URL pública
-            };
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            let message = `🛍️ *PEDIDO KC PERFUMARIA* 💜\n\n`;
+            
+            message += `📦 *PRODUTOS:*\n`;
+            cart.forEach((item, index) => {
+                message += `${index + 1}. ${item.name}\n`;
+                message += `   Qtd: ${item.quantity}x - ${formatPrice(item.price * item.quantity)}\n\n`;
+            });
+            
+            message += `💰 *TOTAL: ${formatPrice(total)}*\n\n`;
+            message += `Olá! Gostaria de fazer este pedido. Podemos combinar a entrega? 😊`;
 
-            if (id) {
-                // Atualizar produto existente
-                const { error } = await supabase
-                    .from('products')
-                    .update(newProduct)
-                    .eq('id', id);
-
-                if (error) {
-                    alert('Erro ao atualizar produto.');
-                } else {
-                    alert('Produto atualizado com sucesso!');
+            try {
+                // Update stock
+                for (const item of cart) {
+                    const product = products.find(p => p.id === item.id);
+                    if (product) {
+                        product.stock -= item.quantity;
+                        
+                        if (isDbConnected) {
+                            await db.saveProduct(product);
+                        }
+                    }
                 }
-            } else {
-                // Adicionar novo produto
-                const { error } = await supabase
-                    .from('products')
-                    .insert([newProduct]);
 
-                if (error) {
-                    alert('Erro ao adicionar produto.');
-                } else {
-                    alert('Produto adicionado com sucesso!');
+                // Record sale
+                const sale = {
+                    id: Date.now(),
+                    items: [...cart],
+                    total: total,
+                    payment_method: 'WhatsApp',
+                    date: new Date().toISOString(),
+                    date_formatted: new Date().toLocaleDateString('pt-BR')
+                };
+                
+                sales.push(sale);
+                
+                if (isDbConnected) {
+                    await db.saveSale(sale);
                 }
+                
+                saveToLocalStorage();
+
+                // Open WhatsApp
+                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+
+                // Clear cart and close sidebar
+                cart = [];
+                updateCartDisplay();
+                toggleCart();
+                renderProducts();
+                updateProductGallery();
+
+                alert('🎉 Pedido enviado para o WhatsApp! Estoque atualizado automaticamente.');
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar venda:', error);
+                alert('❌ Erro ao processar venda. Tente novamente.');
+            }
+        }
+
+        // Admin Functions
+        function accessAdmin() {
+            const password = prompt('🔐 Digite a senha de administrador:');
+            
+            if (password === ADMIN_PASSWORD) {
+                const customerView = document.getElementById('customer-view');
+                const adminPanel = document.getElementById('admin-panel');
+                
+                if (customerView && adminPanel) {
+                    customerView.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    adminPanel.classList.remove('admin-panel');
+                    
+                    updateProductGallery();
+                    
+                    // Load logo in admin preview
+                    const savedLogo = localStorage.getItem('kc_logo');
+                    if (savedLogo) {
+                        updateAdminLogoPreview(savedLogo);
+                    }
+                }
+                
+                alert('🎉 Acesso administrativo concedido!');
+                return true;
+            } else if (password !== null) {
+                alert('❌ Senha incorreta! Acesso negado.');
+                return false;
             }
             
-            productManagementForm.classList.add('hidden');
-            loadProducts();
-            renderAdminProducts();
+            return false;
         }
 
-        function editProduct(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-
-            document.getElementById('product-id').value = product.id;
-            document.getElementById('product-name').value = product.name;
-            document.getElementById('product-description').value = product.description;
-            document.getElementById('product-price').value = product.price;
-            document.getElementById('product-brand').value = product.brand;
-            document.getElementById('product-category').value = product.category;
-            productManagementForm.classList.remove('hidden');
-        }
-
-        async function deleteProduct(productId) {
-            if (confirm('Tem certeza que deseja excluir este produto?')) {
-                const { error } = await supabase
-                    .from('products')
-                    .delete()
-                    .eq('id', productId);
-
-                if (error) {
-                    alert('Erro ao excluir produto.');
-                } else {
-                    alert('Produto excluído com sucesso!');
-                    loadProducts();
-                    renderAdminProducts();
-                }
+        function backToStore() {
+            const customerView = document.getElementById('customer-view');
+            const adminPanel = document.getElementById('admin-panel');
+            
+            if (customerView && adminPanel) {
+                customerView.style.display = 'block';
+                adminPanel.style.display = 'none';
+                adminPanel.classList.add('admin-panel');
             }
         }
 
-        saveProductButton.addEventListener('click', saveProduct);
+        // Diagnostic Function
+        async function diagnosticSupabase() {
+            const results = [];
+            
+            try {
+                results.push('🔍 === DIAGNÓSTICO DO SISTEMA ===\n');
+                
+                // Connection test
+                results.push('1️⃣ TESTANDO CONEXÃO...');
+                if (!db.client) {
+                    results.push('❌ Cliente Supabase não inicializado');
+                } else {
+                    results.push('✅ Cliente Supabase inicializado');
+                }
+                
+                // Database test
+                results.push('\n2️⃣ TESTANDO BANCO DE DADOS...');
+                try {
+                    const { data, error } = await db.client
+                        .from('products')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        results.push(`❌ Erro: ${error.message}`);
+                        if (error.message.includes('relation "products" does not exist')) {
+                            results.push('💡 SOLUÇÃO: Execute o SQL de criação das tabelas');
+                        }
+                    } else {
+                        results.push('✅ Tabela products acessível');
+                    }
+                } catch (err) {
+                    results.push(`❌ Erro ao testar tabela: ${err.message}`);
+                }
+                
+                // Product count
+                results.push('\n3️⃣ CONTANDO PRODUTOS...');
+                results.push(`📊 Produtos no sistema: ${products.length}`);
+                results.push(`🔗 Status da conexão: ${isDbConnected ? 'Online' : 'Offline'}`);
+                
+                // Cart status
+                results.push('\n4️⃣ STATUS DO CARRINHO...');
+                results.push(`🛒 Itens no carrinho: ${cart.length}`);
+                
+                // Storage test
+                results.push('\n5️⃣ TESTANDO STORAGE...');
+                try {
+                    const testData = JSON.stringify({ test: true });
+                    localStorage.setItem('kc_test', testData);
+                    const retrieved = localStorage.getItem('kc_test');
+                    localStorage.removeItem('kc_test');
+                    
+                    if (retrieved === testData) {
+                        results.push('✅ localStorage funcionando');
+                    } else {
+                        results.push('❌ Erro no localStorage');
+                    }
+                } catch (err) {
+                    results.push(`❌ Erro no localStorage: ${err.message}`);
+                }
+                
+                results.push('\n🎯 === FIM DO DIAGNÓSTICO ===');
+                
+            } catch (error) {
+                results.push(`❌ ERRO CRÍTICO: ${error.message}`);
+            }
+            
+            const resultText = results.join('\n');
+            console.log(resultText);
+            
+            showModal('🔍 Diagnóstico do Sistema', `<pre class="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border overflow-x-auto font-mono">${resultText}</pre>`);
+        }
 
-        // Inicializar a aplicação
-        document.addEventListener('DOMContentLoaded', () => {
-            loadProducts();
-            renderCartItems();
+        // Form Submission Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const addProductForm = document.getElementById('add-product-form');
+            if (addProductForm) {
+                addProductForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const name = document.getElementById('product-name').value.trim();
+                    const brand = document.getElementById('product-brand').value;
+                    const category = document.getElementById('product-category').value;
+                    const price = parseFloat(document.getElementById('product-price').value);
+                    const stock = parseInt(document.getElementById('product-stock').value);
+                    const description = document.getElementById('product-description').value.trim();
+
+                    if (!name || !brand || !category || isNaN(price) || isNaN(stock)) {
+                        alert('❌ Por favor, preencha todos os campos obrigatórios!');
+                        return;
+                    }
+
+                    const productId = Date.now();
+                    let imageUrl = null;
+
+                    try {
+                        // Handle image upload
+                        if (currentProductImage) {
+                            if (isDbConnected) {
+                                const fileName = `product_${productId}_${Date.now()}`;
+                                imageUrl = await db.uploadImage(currentProductImage.file, fileName);
+                            }
+                            
+                            if (!imageUrl) {
+                                imageUrl = currentProductImage.dataUrl;
+                            }
+                        }
+
+                        const newProduct = {
+                            id: productId,
+                            name: name,
+                            brand: brand,
+                            category: category,
+                            price: price,
+                            stock: stock,
+                            description: description,
+                            image: getRandomEmoji(),
+                            imageUrl: imageUrl,
+                            image_url: imageUrl,
+                            created_at: new Date().toISOString()
+                        };
+
+                        if (isDbConnected) {
+                            await db.saveProduct(newProduct);
+                        }
+                        
+                        products.push(newProduct);
+                        saveToLocalStorage();
+                        
+                        // Clear form
+                        this.reset();
+                        currentProductImage = null;
+                        
+                        const previewContainer = document.getElementById('image-preview-container');
+                        const uploadPlaceholder = document.getElementById('upload-placeholder');
+                        if (previewContainer && uploadPlaceholder) {
+                            previewContainer.classList.add('hidden');
+                            uploadPlaceholder.classList.remove('hidden');
+                        }
+                        
+                        await loadAndRenderProducts();
+                        
+                        const successMessage = imageUrl 
+                            ? `✅ Produto "${name}" adicionado com foto!`
+                            : `✅ Produto "${name}" adicionado!`;
+                        
+                        alert(successMessage);
+                        
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar produto:', error);
+                        alert(`❌ Erro ao salvar produto: ${error.message}`);
+                    }
+                });
+            }
         });
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('🚀 Inicializando KC Perfumaria...');
+                
+                // Initialize arrays
+                products = [];
+                sales = [];
+                cart = [];
+                
+                // Setup image upload
+                setupProductImageUpload();
+                
+                // Try to connect to Supabase
+                const dbConnected = await db.init();
+                isDbConnected = dbConnected;
+                
+                // Load data
+                await loadAndRenderProducts();
+                
+                // Load cart from localStorage
+                loadFromLocalStorage();
+                updateCartDisplay();
+                
+                // Load logo
+                const savedLogo = localStorage.getItem('kc_logo');
+                if (savedLogo) {
+                    updateLogo(savedLogo);
+                    updateAdminLogoPreview(savedLogo);
+                }
+                
+                console.log('✅ KC Perfumaria inicializada com sucesso!');
+                console.log(`📊 ${products.length} produtos carregados`);
+                console.log(`🔗 Modo: ${isDbConnected ? 'Online' : 'Local'}`);
+                
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                
+                // Emergency fallback
+                isDbConnected = false;
+                loadFromLocalStorage();
+                renderProducts();
+                updateProductGallery();
+                updateCartDisplay();
+                
+                console.log('✅ Sistema funcionando em modo local');
+            }
+        });
+
+        // Make functions globally accessible
+        window.accessAdmin = accessAdmin;
+        window.backToStore = backToStore;
+        window.toggleCart = toggleCart;
+        window.addToCart = addToCart;
+        window.removeFromCart = removeFromCart;
+        window.updateQuantity = updateQuantity;
+        window.finalizePurchaseWhatsApp = finalizePurchaseWhatsApp;
+        window.filterByBrand = filterByBrand;
+        window.filterProducts = filterProducts;
+        window.editProduct = editProduct;
+        window.editProductImage = editProductImage;
+        window.deleteProduct = deleteProduct;
+        window.removeProductImage = removeProductImage;
+        window.changeLogo = changeLogo;
+        window.changeLogoAdmin = changeLogoAdmin;
+        window.removeLogoAdmin = removeLogoAdmin;
+        window.diagnosticSupabase = diagnosticSupabase;
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e4251193e5f187',t:'MTc1NTA0NTQ1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
