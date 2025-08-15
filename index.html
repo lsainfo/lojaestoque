@@ -241,6 +241,7 @@
         let currentBrand = 'todas';
         let currentProductImage = null;
         let isDbConnected = false;
+        let realtimeChannel = null; // Variável para armazenar o canal do Supabase
 
         // Database Management System
         const db = {
@@ -1385,31 +1386,53 @@
                 const dbConnected = await db.init();
                 isDbConnected = dbConnected;
 
-if (isDbConnected) {
-    const channel = db.client
-        .channel('products-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
-            console.log('📡 Mudança detectada no Supabase:', payload);
-            loadAndRenderProducts(); // Atualiza a lista
-        })
-        .subscribe();
-
-    console.log('🔄 Assinatura de mudanças em tempo real configurada.');
-}
-
+                // === INÍCIO DA ALTERAÇÃO 1 ===
+                // Remove a chamada para 'subscribe' do DOMContentLoaded.
+                // Agora, a lógica de inscrição será gerenciada pelo 'handleRealtimeSubscription'.
+                // A primeira chamada para o `handleRealtimeSubscription` será feita logo abaixo.
+                // === FIM DA ALTERAÇÃO 1 ===
                 
                 // Load data
                 await loadAndRenderProducts();
+
+                // === INÍCIO DA ALTERAÇÃO 2 ===
+                // Adiciona uma função para gerenciar a inscrição em tempo real.
+                function handleRealtimeSubscription() {
+                    if (isDbConnected && !realtimeChannel) {
+                        console.log('🔄 Tentando se inscrever para mudanças em tempo real...');
+                        realtimeChannel = db.client
+                            .channel('products-changes')
+                            .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
+                                console.log('📡 Mudança detectada no Supabase:', payload);
+                                loadAndRenderProducts();
+                            })
+                            .subscribe();
+                            
+                        realtimeChannel.on('CHANNEL_STATE_CHANGE', (state, err) => {
+                            if (state === 'CLOSED' || state === 'TIMED_OUT') {
+                                console.warn('⚠️ Conexão do canal em tempo real foi fechada. Tentando reconectar...');
+                                realtimeChannel = null; // Reinicia a variável para permitir nova inscrição
+                            }
+                        });
+                    }
+                }
                 
-                // === INÍCIO DA ALTERAÇÃO ===
-                // Adiciona um listener para atualizar os dados quando a janela voltar a ter foco.
-                // Isso ajuda a resolver problemas de sincronização em dispositivos móveis que 
-                // podem desativar a conexão em tempo real para economizar bateria.
-                window.addEventListener('focus', async () => {
-                    console.log('📱 Janela focada, forçando uma atualização dos produtos...');
-                    await loadAndRenderProducts();
+                // Chama a função de inscrição na inicialização
+                handleRealtimeSubscription();
+
+                // === FIM DA ALTERAÇÃO 2 ===
+
+                // === INÍCIO DA ALTERAÇÃO 3 ===
+                // Usa o evento 'visibilitychange' para detectar quando a página retorna
+                // ao primeiro plano e força uma reconexão e recarregamento dos dados.
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        console.log('📱 Página ficou visível. Forçando recarregamento e reconexão.');
+                        loadAndRenderProducts();
+                        handleRealtimeSubscription();
+                    }
                 });
-                // === FIM DA ALTERAÇÃO ===
+                // === FIM DA ALTERAÇÃO 3 ===
 
                 // Load cart from localStorage
                 loadFromLocalStorage();
