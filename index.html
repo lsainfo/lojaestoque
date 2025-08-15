@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -29,12 +28,10 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Database Status Indicator -->
     <div id="db-status" class="db-status bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hidden">
         ✅ Sistema conectado
     </div>
 
-    <!-- Header -->
     <header class="gradient-bg text-white shadow-lg">
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center">
@@ -60,11 +57,8 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
-        <!-- Customer View -->
         <div id="customer-view">
-            <!-- Brand Filters -->
             <div class="mb-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Marcas</h2>
                 <div class="flex flex-wrap gap-2 sm:gap-3">
@@ -86,7 +80,6 @@
                 </div>
             </div>
 
-            <!-- Categories -->
             <div class="mb-8">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Categorias</h2>
                 <div class="flex flex-wrap gap-2 sm:gap-3">
@@ -105,13 +98,10 @@
                 </div>
             </div>
 
-            <!-- Products Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="products-grid">
-                <!-- Products will be loaded here -->
-            </div>
+                </div>
         </div>
 
-        <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center mb-6">
@@ -126,7 +116,6 @@
                     </div>
                 </div>
                 
-                <!-- Logo Management -->
                 <div class="max-w-2xl mx-auto mb-8">
                     <h3 class="text-lg font-semibold mb-4">🖼️ Gerenciar Logo da Loja</h3>
                     <div class="bg-gray-50 rounded-lg p-6">
@@ -156,11 +145,9 @@
                     </div>
                 </div>
 
-                <!-- Add Product Form -->
                 <div class="max-w-2xl mx-auto">
                     <h3 class="text-lg font-semibold mb-4">Adicionar Produto</h3>
                     <form id="add-product-form" class="space-y-4">
-                        <!-- Product Image Upload -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
                             <div class="image-upload-area" id="product-image-upload" onclick="document.getElementById('product-image-input').click()">
@@ -203,17 +190,14 @@
                 </div>
             </div>
 
-            <!-- Product Gallery Management -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h3 class="text-lg font-semibold mb-4">Produtos Cadastrados</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="product-gallery">
-                    <!-- Product gallery will be loaded here -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- Cart Sidebar -->
     <div id="cart-sidebar" class="cart-sidebar fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col">
         <div class="p-6 border-b border-gray-200">
             <div class="flex justify-between items-center">
@@ -239,7 +223,6 @@
         </div>
     </div>
 
-    <!-- Overlay -->
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleCart()"></div>
 
     <script>
@@ -1418,6 +1401,16 @@ if (isDbConnected) {
                 // Load data
                 await loadAndRenderProducts();
                 
+                // === INÍCIO DA ALTERAÇÃO ===
+                // Adiciona um listener para atualizar os dados quando a janela voltar a ter foco.
+                // Isso ajuda a resolver problemas de sincronização em dispositivos móveis que 
+                // podem desativar a conexão em tempo real para economizar bateria.
+                window.addEventListener('focus', async () => {
+                    console.log('📱 Janela focada, forçando uma atualização dos produtos...');
+                    await loadAndRenderProducts();
+                });
+                // === FIM DA ALTERAÇÃO ===
+
                 // Load cart from localStorage
                 loadFromLocalStorage();
                 updateCartDisplay();
